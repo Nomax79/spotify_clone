@@ -5,7 +5,7 @@
 
 // Cấu hình API
 const API_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://3.27.160.138",
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || "",
   defaultHeaders: {
     "Content-Type": "application/json",
   },
