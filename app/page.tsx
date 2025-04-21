@@ -176,7 +176,6 @@ export default function HomePage() {
                     alt={item.name}
                     className="rounded-full w-full"
                   />
-                  <Link href="/messenger">
                   <Button
                     size="icon"
                     className="absolute bottom-2 right-2 rounded-full bg-green-500 text-black opacity-0 group-hover:opacity-100 transition shadow-lg"
@@ -195,7 +194,7 @@ export default function HomePage() {
                     >
                       <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
-                  </Button></Link>
+                  </Button>
                 </div>
                 <div className="text-sm font-medium line-clamp-1">{item.name}</div>
                 <div className="text-xs text-white/70 line-clamp-1 mt-1">{item.type}</div>

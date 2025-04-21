@@ -139,9 +139,11 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="rounded-full bg-black/20 text-white">
-            <MessageSquare className="h-4 w-4" />
-          </Button>
+          <Link href="/messenger">
+            <Button variant="ghost" size="icon" className="rounded-full bg-black/20 text-white">
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+          </Link>
           <Link href="/search">
             <Button variant="ghost" size="icon" className="rounded-full bg-black/20 text-white">
               <Search className="h-4 w-4" />
@@ -499,7 +501,7 @@ export default function DashboardPage() {
           <Button variant="ghost" size="icon" className="text-white/70 hover:text-white">
             <ListMusic className="h-4 w-4" />
           </Button>
-          <Link href="/messages">
+          <Link href="/messenger">
             <Button variant="ghost" size="icon" className="text-white/70 hover:text-white">
               <MessageSquare className="h-4 w-4" />
             </Button>
