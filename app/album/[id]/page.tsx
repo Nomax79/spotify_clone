@@ -26,6 +26,7 @@ export default function AlbumPage() {
   // If user is not logged in, redirect to home page
   useEffect(() => {
     if (!user) {
+      
       router.push("/")
     }
   }, [user, router])
@@ -39,16 +40,15 @@ export default function AlbumPage() {
         setLoading(true)
 
         // Fetch album details
-        const albumData = await musicApi.getAlbum(albumId)
+        const albumData = await musicApi.getAlbum(albumId) as Album
         setAlbum(albumData || mockAlbum)
 
         // Fetch songs in this album
-        const songsData = await musicApi.getAlbumSongs(albumId)
+        const songsData = await musicApi.getAlbumSongs(albumId) as Song[]
         setSongs(songsData.length > 0 ? songsData : mockSongs)
       } catch (error) {
         console.error("Error fetching album data:", error)
         // Use mock data if API fails
-        setAlbum(mockAlbum)
         setSongs(mockSongs)
       } finally {
         setLoading(false)
@@ -112,6 +112,8 @@ export default function AlbumPage() {
       play_count: 15000000,
       cover_image: "/placeholder.svg?height=60&width=60",
       release_date: "2020-12-20",
+      file_path: "/songs/chung-ta-cua-hien-tai.mp3",
+      created_at: "2020-12-20T00:00:00Z",
     },
     {
       id: "s2",
@@ -122,6 +124,8 @@ export default function AlbumPage() {
       play_count: 8000000,
       cover_image: "/placeholder.svg?height=60&width=60",
       release_date: "2020-12-20",
+      file_path: "/songs/chung-ta-cua-hien-tai-acoustic.mp3",
+      created_at: "2020-12-20T00:00:00Z",
     },
     {
       id: "s3",
@@ -132,6 +136,8 @@ export default function AlbumPage() {
       play_count: 3000000,
       cover_image: "/placeholder.svg?height=60&width=60",
       release_date: "2020-12-20",
+      file_path: "/songs/chung-ta-cua-hien-tai-instrumental.mp3",
+      created_at: "2020-12-20T00:00:00Z",
     },
   ]
 
@@ -267,7 +273,7 @@ export default function AlbumPage() {
                       <div className="text-sm text-white/70">{song.artist}</div>
                     </div>
                   </div>
-                  <div className="hidden md:flex items-center text-white/70">{song.play_count.toLocaleString()}</div>
+                  <div className="hidden md:flex items-center text-white/70">{(song.play_count ?? 0).toLocaleString()}</div>
                   <div className="flex items-center gap-4">
                     <span className="text-white/70">{formatDuration(song.duration)}</span>
                     <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">

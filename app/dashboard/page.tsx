@@ -25,6 +25,8 @@ import {
   User,
   ChevronDown,
   Pause,
+  ArrowLeft,
+  Bell,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -32,7 +34,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { musicApi } from "@/lib/api/postman"
+import postmanApi from "@/lib/api/postman"
 import type { Song, Playlist } from "@/types"
 
 export default function DashboardPage() {
@@ -44,6 +46,7 @@ export default function DashboardPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [loading, setLoading] = useState(true)
   const [currentSong, setCurrentSong] = useState<Song | null>(null)
+  const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false) 
 
   // If user is not logged in, redirect to home page
   useEffect(() => {
@@ -58,9 +61,9 @@ export default function DashboardPage() {
       try {
         setLoading(true)
         const [trendingData, recommendedData, playlistsData] = await Promise.all([
-          musicApi.getTrendingSongs(),
-          musicApi.getRecommendedSongs(),
-          musicApi.getPlaylists(),
+          postmanApi.music.getTrendingSongs() as Promise<Song[]>,
+          postmanApi.music.getRecommendedSongs() as Promise<Song[]>,
+          postmanApi.music.getPlaylists() as Promise<Playlist[]>,
         ])
 
         setTrendingSongs(trendingData)
@@ -91,6 +94,10 @@ export default function DashboardPage() {
     setCurrentSong(song)
     setIsPlaying(true)
     // In a real app, you would trigger the audio player to play the song
+  }
+
+  const toggleLibrary = () => {
+    setIsLibraryCollapsed(!isLibraryCollapsed)
   }
 
   // Mock data for UI display when API data is not available

@@ -148,17 +148,6 @@ export default function LoginPage() {
               Đăng ký Spotify
             </Link>
           </p>
-          <p className="text-xs text-white/50">
-            Trang web này được bảo vệ bằng reCAPTCHA và tuân theo{" "}
-            <Link href="#" className="underline">
-              Chính sách quyền riêng tư
-            </Link>{" "}
-            cùng như{" "}
-            <Link href="#" className="underline">
-              Điều khoản dịch vụ
-            </Link>{" "}
-            của Google.
-          </p>
         </div>
       </div>
     </div>

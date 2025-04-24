@@ -8,9 +8,11 @@ export interface User {
   last_name?: string
   profile_image?: string
   bio?: string
-  created_at: string
+  created_at?: string
   followers_count?: number
   following_count?: number
+  is_staff: boolean
+  is_active?: boolean
 }
 
 export interface PublicUser {
