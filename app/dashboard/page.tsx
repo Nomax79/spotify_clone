@@ -130,19 +130,19 @@ export default function DashboardPage() {
     return null // Don't render anything while checking authentication
   }
 
+ 
   return (
     <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center justify-between p-4 bg-black/90">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <svg viewBox="0 0 78 24" width="78" height="24" className="text-white">
               <path
                 fill="currentColor"
                 d="M18.616 10.639c-3.77-2.297-9.99-2.509-13.59-1.388a1.077 1.077 0 0 1-1.164-.363 1.14 1.14 0 0 1-.119-1.237c.136-.262.37-.46.648-.548 4.132-1.287 11-1.038 15.342 1.605a1.138 1.138 0 0 1 .099 1.863 1.081 1.081 0 0 1-.813.213c-.142-.02-.28-.07-.403-.145Zm-.124 3.402a.915.915 0 0 1-.563.42.894.894 0 0 1-.69-.112c-3.144-1.983-7.937-2.557-11.657-1.398a.898.898 0 0 1-.971-.303.952.952 0 0 1-.098-1.03.929.929 0 0 1 .54-.458c4.248-1.323 9.53-.682 13.14 1.595a.95.95 0 0 1 .3 1.286Zm-1.43 3.267a.73.73 0 0 1-.45.338.712.712 0 0 1-.553-.089c-2.748-1.722-6.204-2.111-10.276-1.156a.718.718 0 0 1-.758-.298.745.745 0 0 1-.115-.265.757.757 0 0 1 .092-.563.737.737 0 0 1 .457-.333c4.455-1.045 8.277-.595 11.361 1.338a.762.762 0 0 1 .241 1.028ZM11.696 0C5.237 0 0 5.373 0 12c0 6.628 5.236 12 11.697 12 6.46 0 11.698-5.372 11.698-12 0-6.627-5.238-12-11.699-12h.001Z"
               />
             </svg>
-            <span className="text-sm font-medium">Thư gọn Thư viện</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function DashboardPage() {
             <DropdownMenuTrigger asChild>
               <div className="flex items-center gap-2 bg-black/20 rounded-full p-1 cursor-pointer hover:bg-black/30 transition-colors">
                 <Image
-                  src="/placeholder.svg?height=32&width=32"
+                  src={user?.profile_image || "/placeholder.svg?height=32&width=32"}
                   width={32}
                   height={32}
                   alt="Profile"
@@ -188,78 +188,117 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 bg-black p-4 hidden md:block">
+        <div
+          className={`${isLibraryCollapsed ? "w-20" : "w-64"} flex-shrink-0 bg-black p-4 hidden md:block transition-all duration-300`}
+        >
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <Button variant="ghost" className="justify-start text-white/70 hover:text-white">
+              <Button
+                variant="ghost"
+                className={`justify-start text-white/70 hover:text-white ${isLibraryCollapsed ? "px-3" : ""}`}
+              >
                 <Home className="mr-2 h-5 w-5" />
-                Trang chủ
+                {!isLibraryCollapsed && <span>Trang chủ</span>}
               </Button>
               <Link href="/search" className="w-full">
-                <Button variant="ghost" className="justify-start text-white/70 hover:text-white w-full">
+                <Button
+                  variant="ghost"
+                  className={`justify-start text-white/70 hover:text-white w-full ${isLibraryCollapsed ? "px-3" : ""}`}
+                >
                   <Search className="mr-2 h-5 w-5" />
-                  Tìm kiếm
+                  {!isLibraryCollapsed && <span>Tìm kiếm</span>}
                 </Button>
               </Link>
-              <Link href="/library" className="w-full">
-                <Button variant="ghost" className="justify-start text-white/70 hover:text-white w-full">
-                  <Library className="mr-2 h-5 w-5" />
-                  Thư viện
-                </Button>
-              </Link>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Link href="/create-playlist" className="w-full">
-                <Button variant="ghost" className="justify-start text-white/70 hover:text-white w-full">
-                  <Plus className="mr-2 h-5 w-5" />
-                  Tạo playlist
-                </Button>
-              </Link>
-              <Link href="/liked-songs" className="w-full">
-                <Button variant="ghost" className="justify-start text-white/70 hover:text-white w-full">
-                  <Heart className="mr-2 h-5 w-5" />
-                  Bài hát đã thích
-                </Button>
-              </Link>
-            </div>
-            <div className="border-t border-white/10 pt-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium">Danh sách phát</span>
-                <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
-                  Gần đây
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 p-2 rounded hover:bg-white/10 cursor-pointer">
-                  <div className="w-10 h-10 bg-purple-600 flex items-center justify-center rounded">
-                    <Heart className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Bài hát đã thích</div>
-                    <div className="text-xs text-white/70">Danh sách phát • 4 bài hát</div>
-                  </div>
+              <div className="flex items-center">
+                <Link href="/library" className={`${isLibraryCollapsed ? "w-12" : "flex-1"}`}>
+                  <Button
+                    variant="ghost"
+                    className={`justify-start text-white/70 hover:text-white ${isLibraryCollapsed ? "w-12 px-3" : "w-full"}`}
+                  >
+                    <Library className="mr-2 h-5 w-5" />
+                    {!isLibraryCollapsed && <span>Thư viện</span>}
+                  </Button>
+                </Link>
+                <div
+                  className="p-1 rounded-full hover:bg-zinc-800 cursor-pointer group"
+                  onClick={toggleLibrary}
+                  title="Thu gọn thư viện"
+                >
+                  {isLibraryCollapsed ? (
+                    <ChevronRight className="h-5 w-5 text-white/70" />
+                  ) : (
+                    <ArrowLeft className="h-5 w-5 text-white/70" />
+                  )}
+                  <span className="sr-only">Thu gọn thư viện</span>
                 </div>
-                {(playlists.length > 0 ? playlists : mockPlaylists).slice(0, 3).map((playlist) => (
-                  <Link href={`/playlist/${playlist.id}`} key={playlist.id}>
+              </div>
+            </div>
+            {!isLibraryCollapsed && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Link href="/create-playlist" className="w-full">
+                    <Button variant="ghost" className="justify-start text-white/70 hover:text-white w-full">
+                      <Plus className="mr-2 h-5 w-5" />
+                      Tạo playlist
+                    </Button>
+                  </Link>
+                  <Link href="/liked-songs" className="w-full">
+                    <Button variant="ghost" className="justify-start text-white/70 hover:text-white w-full">
+                      <Heart className="mr-2 h-5 w-5" />
+                      Bài hát đã thích
+                    </Button>
+                  </Link>
+                </div>
+                <div className="border-t border-white/10 pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-medium">Danh sách phát</span>
+                    <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">
+                      Gần đây
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
                     <div className="flex items-center gap-3 p-2 rounded hover:bg-white/10 cursor-pointer">
-                      <Image
-                        src={playlist.cover_image || "/placeholder.svg?height=40&width=40"}
-                        width={40}
-                        height={40}
-                        alt={playlist.title}
-                        className="rounded"
-                      />
+                      <div className="w-10 h-10 bg-purple-600 flex items-center justify-center rounded">
+                        <Heart className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <div className="text-sm font-medium">{playlist.title}</div>
-                        <div className="text-xs text-white/70">
-                          Danh sách phát • {playlist.created_by || user.username}
-                        </div>
+                        <div className="text-sm font-medium">Bài hát đã thích</div>
+                        <div className="text-xs text-white/70">Danh sách phát • 4 bài hát</div>
                       </div>
                     </div>
-                  </Link>
-                ))}
+                    {(playlists.length > 0 ? playlists : mockPlaylists).slice(0, 3).map((playlist) => (
+                      <Link href={`/playlist/${playlist.id}`} key={playlist.id}>
+                        <div className="flex items-center gap-3 p-2 rounded hover:bg-white/10 cursor-pointer">
+                          <Image
+                            src={playlist.cover_image || "/placeholder.svg?height=40&width=40"}
+                            width={40}
+                            height={40}
+                            alt={playlist.title}
+                            className="rounded"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">{playlist.title}</div>
+                            <div className="text-xs text-white/70">
+                              Danh sách phát • {playlist.created_by || user.username}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            {isLibraryCollapsed && (
+              <div className="flex flex-col items-center gap-4 mt-2">
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Plus className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Heart className="h-5 w-5" />
+                </Button>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -508,7 +547,7 @@ export default function DashboardPage() {
           <Button variant="ghost" size="icon" className="text-white/70 hover:text-white">
             <ListMusic className="h-4 w-4" />
           </Button>
-          <Link href="/messenger">
+          <Link href="/messages">
             <Button variant="ghost" size="icon" className="text-white/70 hover:text-white">
               <MessageSquare className="h-4 w-4" />
             </Button>
@@ -525,25 +564,5 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
-  )
-}
-
-function Bell(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-    </svg>
   )
 }

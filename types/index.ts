@@ -11,7 +11,7 @@ export interface User {
   created_at?: string
   followers_count?: number
   following_count?: number
-  is_staff: boolean
+  is_admin?: boolean
   is_active?: boolean
 }
 
@@ -19,6 +19,7 @@ export interface PublicUser {
   id: string
   username: string
   profile_image?: string
+  email?: string
 }
 
 export interface Album {
@@ -38,10 +39,9 @@ export interface Song {
   album?: string
   genre?: string
   duration: number
-  file_path: string
-  cover_image?: string
-  release_date?: string
-  created_at: string
+  lyrics?: string
+  audio_url?: string | null | undefined
+  cover_image?: string | null | undefined
   play_count?: number
   likes_count?: number
 }
@@ -96,6 +96,7 @@ export enum MessageTypeEnum {
   TEXT = "text",
   IMAGE = "image",
   AUDIO = "audio",
+  MUSIC = "music",
 }
 
 export interface Message {

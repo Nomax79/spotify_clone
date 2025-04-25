@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("spotify_user", JSON.stringify(userData))
 
       // Redirect to admin or dashboard based on is_staff property
-      if (userData.is_staff=== true) {
+      if (userData.is_admin=== true) {
         router.push("/admin")
       } else {
         router.push("/dashboard")
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.setItem("spotify_user", JSON.stringify(userData))
 
               // Chuyển hướng dựa trên vai trò
-              if (userData.is_staff) {
+              if (userData.is_admin) {
                 router.push("/admin")
               } else {
                 router.push("/dashboard")
@@ -208,8 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
   
-  // Check if user is admin based on is_staff property
-  const isAdmin = user?.is_staff === true
+  const isAdmin = user?.is_admin=== true
   return (
     <AuthContext.Provider value={{ user, isLoading, isAdmin, login, loginWithProvider, register, logout }}>
       {children}

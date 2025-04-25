@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -11,189 +11,200 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Pencil, Trash2, Search, Music, Play, Pause } from "lucide-react"
-import { musicApi } from "@/lib/api"
-import type { Song } from "@/types"
-import Image from "next/image"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+} from "@/components/ui/dialog";
+import { Pencil, Trash2, Search, Music, Play, Pause, UploadCloud } from "lucide-react";
+import { musicApi } from "@/lib/api";
+import type { Song } from "@/types";
+import Image from "next/image";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export default function AdminSongsPage() {
-  const [songs, setSongs] = useState<Song[]>([])
-  const [genres, setGenres] = useState<{ id: string; name: string }[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isAddSongOpen, setIsAddSongOpen] = useState(false)
-  const [isEditSongOpen, setIsEditSongOpen] = useState(false)
-  const [isDeleteSongOpen, setIsDeleteSongOpen] = useState(false)
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null)
-  const [playingSong, setPlayingSong] = useState<string | null>(null)
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [genres, setGenres] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAddSongOpen, setIsAddSongOpen] = useState(false);
+  const [isEditSongOpen, setIsEditSongOpen] = useState(false);
+  const [isDeleteSongOpen, setIsDeleteSongOpen] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [playingSong, setPlayingSong] = useState<string | null>(null);
+  const audioRef = typeof Audio !== 'undefined' ? new Audio() : null;
+
+  // State cho việc thêm bài hát mới
   const [newSong, setNewSong] = useState({
     title: "",
     artist: "",
     album: "",
     genre: "",
     duration: 0,
-    file_path: "",
-    cover_image: "",
-  })
+    audio_file: null as File | null,
+    cover_image: null as File | null,
+  });
+
+  const [editSongData, setEditSongData] = useState<{
+    title: string;
+    artist: string;
+    album?: string;
+    genre?: string;
+    duration?: number;
+    audio_file: File | null;
+    cover_image: File | null;
+  } | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const [songsData, genresData] = await Promise.all([musicApi.getSongs(), musicApi.getGenres()])
-        setSongs(songsData as Song[])
-        setGenres(genresData as { id: string; name: string }[])
-      } catch (error) {
-        console.error("Error fetching data:", error)
-        // Fallback to mock data
-        setSongs([
-          {
-            id: "1",
-            title: "Chúng Ta Của Hiện Tại",
-            artist: "Sơn Tùng M-TP",
-            album: "Chúng Ta Của Hiện Tại (Single)",
-            genre: "V-Pop",
-            duration: 289,
-            file_path: "https://example.com/song1.mp3",
-            cover_image: "/placeholder.svg?height=60&width=60&text=ST",
-            release_date: "2020-12-20",
-            created_at: new Date().toISOString(),
-            play_count: 15000000,
-          },
-          {
-            id: "2",
-            title: "Có Chắc Yêu Là Đây",
-            artist: "Sơn Tùng M-TP",
-            album: "Có Chắc Yêu Là Đây (Single)",
-            genre: "V-Pop",
-            duration: 218,
-            file_path: "https://example.com/song2.mp3",
-            cover_image: "/placeholder.svg?height=60&width=60&text=ST",
-            release_date: "2020-07-05",
-            created_at: new Date().toISOString(),
-            play_count: 12000000,
-          },
-          {
-            id: "3",
-            title: "Chạy Ngay Đi",
-            artist: "Sơn Tùng M-TP",
-            album: "Chạy Ngay Đi (Single)",
-            genre: "V-Pop",
-            duration: 248,
-            file_path: "https://example.com/song3.mp3",
-            cover_image: "/placeholder.svg?height=60&width=60&text=ST",
-            release_date: "2018-05-12",
-            created_at: new Date().toISOString(),
-            play_count: 18000000,
-          },
-        ])
-        setGenres([
-          { id: "1", name: "V-Pop" },
-          { id: "2", name: "K-Pop" },
-          { id: "3", name: "Pop" },
-          { id: "4", name: "Rock" },
-          { id: "5", name: "Hip-Hop" },
-        ])
-      } finally {
-        setLoading(false)
-      }
-    }
+    fetchData();
+  }, []);
 
-    fetchData()
-  }, [])
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleAudioEnded = () => {
+      setPlayingSong(null);
+    };
+
+    if (audioRef) {
+      audioRef.addEventListener('ended', handleAudioEnded);
+
+      return () => {
+        audioRef.removeEventListener('ended', handleAudioEnded);
+      };
+    }
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [songsData, genresData] = await Promise.all([musicApi.getSongs(), musicApi.getGenres()]);
+      setSongs(songsData as Song[]);
+      setGenres(genresData as { id: string; name: string }[]);
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error);
+
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddSong = async () => {
     try {
-      // Validate form
-      if (!newSong.title || !newSong.artist || !newSong.file_path) {
-        alert("Vui lòng điền đầy đủ thông tin bắt buộc")
-        return
+      if (!newSong.title || !newSong.artist || !newSong.audio_file) {
+        alert("Vui lòng điền đầy đủ thông tin bắt buộc (tên, nghệ sĩ, file nhạc).");
+        return;
       }
 
-      // Call API to create song
-      const createdSong = await musicApi.createSong(newSong)
+      const formData = new FormData();
+      formData.append("title", newSong.title);
+      formData.append("artist", newSong.artist);
+      formData.append("album", newSong.album || '');
+      formData.append("genre", newSong.genre);
+      formData.append("duration", newSong.duration.toString());
+      formData.append("audio_file", newSong.audio_file);
+      if (newSong.cover_image) {
+        formData.append("cover_image", newSong.cover_image);
+      }
 
-      // Update songs list
-      setSongs([...songs, createdSong as Song])
-
-      // Reset form and close dialog
-      setNewSong({
-        title: "",
-        artist: "",
-        album: "",
-        genre: "",
-        duration: 0,
-        file_path: "",
-        cover_image: "",
-      })
-      setIsAddSongOpen(false)
+      const createdSong = await musicApi.createSong(formData);
+      setSongs([...songs, createdSong as Song]);
+      setNewSong({ title: "", artist: "", album: "", genre: "", duration: 0, audio_file: null, cover_image: null });
+      setIsAddSongOpen(false);
+      alert("Thêm bài hát thành công!");
     } catch (error) {
-      console.error("Error creating song:", error)
-      alert("Có lỗi xảy ra khi tạo bài hát")
+      console.error("Lỗi khi tạo bài hát:", error);
+      alert("Có lỗi xảy ra khi tạo bài hát.");
     }
-  }
+  };
+
+  const handleOpenEditDialog = (song: Song) => {
+    setSelectedSong(song);
+    setEditSongData({
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      genre: song.genre,
+      duration: song.duration,
+      audio_file: null,
+      cover_image: null,
+    });
+    setIsEditSongOpen(true);
+  };
 
   const handleEditSong = async () => {
-    if (!selectedSong) return
+    if (!selectedSong || !editSongData) return;
 
     try {
-      // Call API to update song
-      const updatedSong = await musicApi.updateSong(selectedSong.id, selectedSong)
+      const formData = new FormData();
+      formData.append("title", editSongData.title);
+      formData.append("artist", editSongData.artist);
+      if (editSongData.album !== undefined) formData.append("album", editSongData.album);
+      if (editSongData.genre !== undefined) formData.append("genre", editSongData.genre);
+      if (editSongData.duration !== undefined) formData.append("duration", editSongData.duration?.toString() || "0");
+      if (editSongData.audio_file) {
+        formData.append("audio_file", editSongData.audio_file);
+      }
+      if (editSongData.cover_image) {
+        formData.append("cover_image", editSongData.cover_image);
+      }
 
-      // Update songs list
-      setSongs(songs.map((song) => (song.id === selectedSong.id ? (updatedSong as Song) : song)))
-
-      // Reset and close dialog
-      setSelectedSong(null)
-      setIsEditSongOpen(false)
+      const updatedSong = await musicApi.updateSong(selectedSong.id, formData);
+      setSongs(songs.map((s) => (s.id === selectedSong.id ? (updatedSong as Song) : s)));
+      setSelectedSong(null);
+      setEditSongData(null);
+      setIsEditSongOpen(false);
+      alert("Cập nhật bài hát thành công!");
     } catch (error) {
-      console.error("Error updating song:", error)
-      alert("Có lỗi xảy ra khi cập nhật bài hát")
+      console.error("Lỗi khi cập nhật bài hát:", error);
+      alert("Có lỗi xảy ra khi cập nhật bài hát.");
     }
-  }
+  };
 
   const handleDeleteSong = async () => {
-    if (!selectedSong) return
+    if (!selectedSong) return;
 
     try {
-      // Call API to delete song
-      await musicApi.deleteSong(selectedSong.id)
-
-      // Update songs list
-      setSongs(songs.filter((song) => song.id !== selectedSong.id))
-
-      // Reset and close dialog
-      setSelectedSong(null)
-      setIsDeleteSongOpen(false)
+      await musicApi.deleteSong(selectedSong.id);
+      setSongs(songs.filter((song) => song.id !== selectedSong.id));
+      setSelectedSong(null);
+      setIsDeleteSongOpen(false);
+      alert("Xóa bài hát thành công!");
     } catch (error) {
-      console.error("Error deleting song:", error)
-      alert("Có lỗi xảy ra khi xóa bài hát")
+      console.error("Lỗi khi xóa bài hát:", error);
+      alert("Có lỗi xảy ra khi xóa bài hát.");
     }
-  }
+  };
 
   const togglePlaySong = (songId: string) => {
     if (playingSong === songId) {
-      setPlayingSong(null)
+      setPlayingSong(null);
+      if (audioRef) {
+        audioRef.pause();
+      }
     } else {
-      setPlayingSong(songId)
+      setPlayingSong(songId);
+      const songToPlay = songs.find((song) => song.id === songId);
+      if (songToPlay && audioRef) {
+        audioRef.src = songToPlay.audio_url ?? ""; // Sử dụng nullish coalescing operator
+        audioRef.play().catch(err => {
+          console.error("Lỗi khi phát nhạc:", err);
+          setPlayingSong(null);
+          alert("Không thể phát bài hát này.");
+        });
+      }
     }
-  }
+  };
 
   const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = Math.floor(seconds % 60)
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
-  }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `<span class="math-inline">\{minutes\}\:</span>{remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
-  const filteredSongs = songs.filter(
-    (song) =>
-      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (song.album && song.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (song.genre && song.genre.toLowerCase().includes(searchQuery.toLowerCase())),
-  )
+  const filteredSongs = songs.filter((song) =>
+    song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    song.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (song.album && song.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (song.genre && song.genre.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <div className="space-y-6">
@@ -259,7 +270,7 @@ export default function AdminSongsPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Image
-                        src={song.cover_image || "/placeholder.svg?height=40&width=40"}
+                        src={song.cover_image ?? "/placeholder.svg?height=40&width=40"}
                         width={40}
                         height={40}
                         alt={song.title}
@@ -280,10 +291,7 @@ export default function AdminSongsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
-                          setSelectedSong(song)
-                          setIsEditSongOpen(true)
-                        }}
+                        onClick={() => handleOpenEditDialog(song)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -292,8 +300,8 @@ export default function AdminSongsPage() {
                         size="icon"
                         className="text-red-500"
                         onClick={() => {
-                          setSelectedSong(song)
-                          setIsDeleteSongOpen(true)
+                          setSelectedSong(song);
+                          setIsDeleteSongOpen(true);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -380,197 +388,217 @@ export default function AdminSongsPage() {
                   id="duration"
                   type="number"
                   value={newSong.duration || ""}
-                  onChange={(e) => setNewSong({ ...newSong, duration: Number.parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setNewSong({ ...newSong, duration: parseInt(e.target.value) || 0 })}
                   className="bg-zinc-800 border-zinc-700 text-white"
                 />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="audio_file" className="text-sm font-medium">
+                  File nhạc <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="audio_file"
+                  type="file"
+                  accept="audio/*"
+                  className="bg-zinc-800 border-zinc-700 text-white file:border-0 file:bg-zinc-700 file:text-zinc-300 file:rounded-md"
+                  onChange={(e) => setNewSong({ ...newSong, audio_file: e.target.files?.[0] ?? null })}required
+                  />
+                  {newSong.audio_file && (
+                    <p className="text-xs text-zinc-400">Đã chọn: {newSong.audio_file.name}</p>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="cover_image" className="text-sm font-medium">
-                  URL ảnh bìa
+                  Ảnh bìa
                 </label>
                 <Input
                   id="cover_image"
-                  value={newSong.cover_image}
-                  onChange={(e) => setNewSong({ ...newSong, cover_image: e.target.value })}
-                  className="bg-zinc-800 border-zinc-700 text-white"
-                  placeholder="https://example.com/cover.jpg"
+                  type="file"
+                  accept="image/*"
+                  className="bg-zinc-800 border-zinc-700 text-white file:border-0 file:bg-zinc-700 file:text-zinc-300 file:rounded-md"
+                  onChange={(e) => setNewSong({ ...newSong, cover_image: e.target.files?.[0] ?? null })}
                 />
+                {newSong.cover_image && (
+                  <p className="text-xs text-zinc-400">Đã chọn: {newSong.cover_image.name}</p>
+                )}
               </div>
             </div>
-            <div className="space-y-2">
-              <label htmlFor="file_path" className="text-sm font-medium">
-                URL file nhạc <span className="text-red-500">*</span>
-              </label>
-              <Input
-                id="file_path"
-                value={newSong.file_path}
-                onChange={(e) => setNewSong({ ...newSong, file_path: e.target.value })}
-                className="bg-zinc-800 border-zinc-700 text-white"
-                placeholder="https://example.com/song.mp3"
-                required
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddSongOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={handleAddSong}>Thêm bài hát</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Song Dialog */}
-      <Dialog open={isEditSongOpen} onOpenChange={setIsEditSongOpen}>
-        <DialogContent className="bg-zinc-900 text-white border-zinc-800 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Chỉnh sửa bài hát</DialogTitle>
-            <DialogDescription className="text-zinc-400">Cập nhật thông tin bài hát</DialogDescription>
-          </DialogHeader>
-          {selectedSong && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="edit_title" className="text-sm font-medium">
-                    Tên bài hát
-                  </label>
-                  <Input
-                    id="edit_title"
-                    value={selectedSong.title}
-                    onChange={(e) => setSelectedSong({ ...selectedSong, title: e.target.value })}
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                  />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsAddSongOpen(false);
+                setNewSong({ title: "", artist: "", album: "", genre: "", duration: 0, audio_file: null, cover_image: null });
+              }}>
+                Hủy
+              </Button>
+              <Button onClick={handleAddSong}>
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Thêm bài hát
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+  
+        {/* Edit Song Dialog */}
+        <Dialog open={isEditSongOpen} onOpenChange={setIsEditSongOpen}>
+          <DialogContent className="bg-zinc-900 text-white border-zinc-800 max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa bài hát</DialogTitle>
+              <DialogDescription className="text-zinc-400">
+                Chỉnh sửa thông tin bài hát
+              </DialogDescription>
+            </DialogHeader>
+            {selectedSong && editSongData && (
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit_title" className="text-sm font-medium">
+                      Tên bài hát <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      id="edit_title"
+                      value={editSongData.title}
+                      onChange={(e) => setEditSongData({ ...editSongData, title: e.target.value })}
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit_artist" className="text-sm font-medium">
+                      Nghệ sĩ <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      id="edit_artist"
+                      value={editSongData.artist}
+                      onChange={(e) => setEditSongData({ ...editSongData, artist: e.target.value })}
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="edit_artist" className="text-sm font-medium">
-                    Nghệ sĩ
-                  </label>
-                  <Input
-                    id="edit_artist"
-                    value={selectedSong.artist}
-                    onChange={(e) => setSelectedSong({ ...selectedSong, artist: e.target.value })}
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit_album" className="text-sm font-medium">
+                      Album
+                    </label>
+                    <Input
+                      id="edit_album"
+                      value={editSongData.album || ""}
+                      onChange={(e) => setEditSongData({ ...editSongData, album: e.target.value })}
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit_genre" className="text-sm font-medium">
+                      Thể loại
+                    </label>
+                    <Select
+                      value={editSongData.genre}
+                      onValueChange={(value) => setEditSongData({ ...editSongData, genre: value })}
+                    >
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                        <SelectValue placeholder="Chọn thể loại" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+                        {genres.map((genre) => (
+                          <SelectItem key={genre.id} value={genre.name}>
+                            {genre.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="edit_album" className="text-sm font-medium">
-                    Album
-                  </label>
-                  <Input
-                    id="edit_album"
-                    value={selectedSong.album || ""}
-                    onChange={(e) => setSelectedSong({ ...selectedSong, album: e.target.value })}
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="edit_genre" className="text-sm font-medium">
-                    Thể loại
-                  </label>
-                  <Select
-                    value={selectedSong.genre || ""}
-                    onValueChange={(value) => setSelectedSong({ ...selectedSong, genre: value })}
-                  >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
-                      <SelectValue placeholder="Chọn thể loại" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                      {genres.map((genre) => (
-                        <SelectItem key={genre.id} value={genre.name}>
-                          {genre.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="edit_duration" className="text-sm font-medium">
-                    Thời lượng (giây)
-                  </label>
-                  <Input
-                    id="edit_duration"
-                    type="number"
-                    value={selectedSong.duration || ""}
-                    onChange={(e) =>
-                      setSelectedSong({ ...selectedSong, duration: Number.parseInt(e.target.value) || 0 })
-                    }
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit_duration" className="text-sm font-medium">
+                      Thời lượng (giây)
+                    </label>
+                    <Input
+                      id="edit_duration"
+                      type="number"
+                      value={editSongData.duration || ""}
+                      onChange={(e) =>
+                        setEditSongData({ ...editSongData, duration: parseInt(e.target.value) || 0 })
+                      }
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="edit_audio_file" className="text-sm font-medium">
+                      File nhạc mới (nếu muốn thay đổi)
+                    </label>
+                    <Input
+                      id="edit_audio_file"
+                      type="file"
+                      accept="audio/*"
+                      className="bg-zinc-800 border-zinc-700 text-white file:border-0 file:bg-zinc-700 file:text-zinc-300 file:rounded-md"
+                      onChange={(e) => setEditSongData({ ...editSongData, audio_file: e.target.files?.[0] ?? null })}
+                    />
+                    {editSongData.audio_file && (
+                      <p className="text-xs text-zinc-400">Đã chọn: {editSongData.audio_file.name}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="edit_cover_image" className="text-sm font-medium">
-                    URL ảnh bìa
+                    Ảnh bìa mới (nếu muốn thay đổi)
                   </label>
                   <Input
                     id="edit_cover_image"
-                    value={selectedSong.cover_image || ""}
-                    onChange={(e) => setSelectedSong({ ...selectedSong, cover_image: e.target.value })}
-                    className="bg-zinc-800 border-zinc-700 text-white"
+                    type="file"
+                    accept="image/*"
+                    className="bg-zinc-800 border-zinc-700 text-white file:border-0 file:bg-zinc-700 file:text-zinc-300 file:rounded-md"
+                    onChange={(e) => setEditSongData({ ...editSongData, cover_image: e.target.files?.[0] ?? null })}
                   />
+                  {editSongData.cover_image && (
+                    <p className="text-xs text-zinc-400">Đã chọn: {editSongData.cover_image.name}</p>
+                  )}
                 </div>
               </div>
-              <div className="space-y-2">
-                <label htmlFor="edit_file_path" className="text-sm font-medium">
-                  URL file nhạc
-                </label>
-                <Input
-                  id="edit_file_path"
-                  value={selectedSong.file_path}
-                  onChange={(e) => setSelectedSong({ ...selectedSong, file_path: e.target.value })}
-                  className="bg-zinc-800 border-zinc-700 text-white"
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditSongOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={handleEditSong}>Lưu thay đổi</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Song Dialog */}
-      <Dialog open={isDeleteSongOpen} onOpenChange={setIsDeleteSongOpen}>
-        <DialogContent className="bg-zinc-900 text-white border-zinc-800">
-          <DialogHeader>
-            <DialogTitle>Xác nhận xóa bài hát</DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Bạn có chắc chắn muốn xóa bài hát này? Hành động này không thể hoàn tác.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedSong && (
-            <div className="py-4">
-              <div className="flex items-center gap-3 p-4 bg-zinc-800 rounded-md">
-                <Image
-                  src={selectedSong.cover_image || "/placeholder.svg?height=60&width=60"}
-                  width={60}
-                  height={60}
-                  alt={selectedSong.title}
-                  className="rounded"
-                />
-                <div>
-                  <div className="font-medium">{selectedSong.title}</div>
-                  <div className="text-sm text-zinc-400">{selectedSong.artist}</div>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteSongOpen(false)}>
-              Hủy
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteSong}>
-              Xóa bài hát
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsEditSongOpen(false);
+                setSelectedSong(null);
+                setEditSongData(null);
+              }}>
+                Hủy
+              </Button>
+              <Button onClick={handleEditSong}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Lưu thay đổi
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+  
+        {/* Delete Song Dialog */}
+        <Dialog open={isDeleteSongOpen} onOpenChange={setIsDeleteSongOpen}>
+          <DialogContent className="bg-zinc-900 text-white border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-red-500">Xóa bài hát</DialogTitle>
+              <DialogDescription className="text-zinc-400">
+                Bạn có chắc chắn muốn xóa bài hát này? Thao tác này không thể hoàn tác.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDeleteSongOpen(false);
+                setSelectedSong(null);
+              }}>
+                Hủy
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteSong}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Xóa
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }

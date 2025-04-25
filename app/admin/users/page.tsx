@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -161,10 +161,6 @@ export default function AdminUsersPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
-
   const filteredUsers = users.filter(
     (user) =>
       user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -202,7 +198,6 @@ export default function AdminUsersPage() {
               <TableHead className="text-zinc-400">Người dùng</TableHead>
               <TableHead className="text-zinc-400">Email</TableHead>
               <TableHead className="text-zinc-400">Vai trò</TableHead>
-              <TableHead className="text-zinc-400">Ngày tạo</TableHead>
               <TableHead className="text-zinc-400 text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
@@ -242,9 +237,9 @@ export default function AdminUsersPage() {
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <div
-                      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs w-fit ${user.is_staff ? "bg-purple-500/20 text-purple-500" : "bg-green-500/20 text-green-500"}`}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs w-fit ${user.is_admin ? "bg-purple-500/20 text-purple-500" : "bg-green-500/20 text-green-500"}`}
                     >
-                      {user.is_staff ? (
+                      {user.is_admin ? (
                         <>
                           <ShieldAlert className="h-3 w-3" />
                           <span>Admin</span>
@@ -257,7 +252,6 @@ export default function AdminUsersPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>{formatDate(user.created_at)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -454,8 +448,8 @@ export default function AdminUsersPage() {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="edit_is_staff"
-                    checked={selectedUser.is_staff}
-                    onCheckedChange={(checked) => setSelectedUser({ ...selectedUser, is_staff: checked })}
+                    checked={selectedUser.is_admin}
+                    onCheckedChange={(checked) => setSelectedUser({ ...selectedUser, is_admin: checked })}
                   />
                   <Label htmlFor="edit_is_staff">Quyền quản trị (Staff)</Label>
                 </div>

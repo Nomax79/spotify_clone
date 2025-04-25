@@ -25,9 +25,9 @@ export default function AlbumPage() {
 
   // If user is not logged in, redirect to home page
   useEffect(() => {
-    if (!user) {
+    if (user?.username === "admin") {
       
-      router.push("/")
+      router.push("/admin")
     }
   }, [user, router])
 

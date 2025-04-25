@@ -3,15 +3,32 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
-import { Search, Send, Paperclip, Mic, MoreVertical, Play, Music, ImageIcon, X, ChevronLeft } from "lucide-react"
+import {
+  Search,
+  Send,
+  Paperclip,
+  Mic,
+  MoreVertical,
+  Play,
+  Music,
+  ImageIcon,
+  X,
+  ChevronLeft,
+  UserPlus,
+  Users,
+  MessageSquare,
+} from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { chatApi, accountsApi } from "@/lib/api"
-import type { Conversation, Message, PublicUser, Song, User } from "@/types"
+import type { Conversation, Message, PublicUser, Song } from "@/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useMobile } from "@/hooks/use-mobile"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "@/components/ui/use-toast"
 import { MessageTypeEnum } from "@/types"
 
 export default function MessengerPage() {
@@ -20,6 +37,8 @@ export default function MessengerPage() {
   const isMobile = useMobile()
 
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [availableUsers, setAvailableUsers] = useState<PublicUser[]>([])
+  const [followedUsers, setFollowedUsers] = useState<string[]>([])
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
@@ -29,42 +48,65 @@ export default function MessengerPage() {
   const [showShareMusic, setShowShareMusic] = useState(false)
   const [recentSongs, setRecentSongs] = useState<Song[]>([])
   const [showMobileConversations, setShowMobileConversations] = useState(true)
+  const [activeTab, setActiveTab] = useState<"conversations" | "users">("conversations")
+  const [followLoading, setFollowLoading] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // If user is not logged in, redirect to home page
   useEffect(() => {
     if (!user) {
-      router.push("/messenger")
+      router.push("/")
     }
   }, [user, router])
 
-  // Fetch conversations
+  // Fetch conversations and available users
   useEffect(() => {
-    const fetchConversations = async () => {
+    const fetchData = async () => {
       if (!user) return
 
       try {
         setIsLoading(true)
-        const conversationsData = (await chatApi.getConversations()) as Conversation[]
-        setConversations(
-          conversationsData.length > 0 ? conversationsData : (mockConversations as unknown as Conversation[]),
-        )
 
-        // Select the first conversation by default
-        if (conversationsData.length > 0 && !selectedConversation) {
-          setSelectedConversation(conversationsData[0])
-          setShowMobileConversations(false)
-        } else if (mockConversations.length > 0 && !selectedConversation) {
-          setSelectedConversation(mockConversations[0] as unknown as Conversation)
+        // Fetch conversations
+        const conversationsData = (await chatApi.getConversations()) as Conversation[]
+        const conversationsList = conversationsData.length > 0 ? conversationsData : mockConversations
+        setConversations(conversationsList)
+
+        // Fetch all available users
+        const usersData = await accountsApi.getPublicUsers()
+        const usersList = usersData.length > 0 ? usersData : mockContacts
+
+        // Filter out the current user
+        const filteredUsers = usersList.filter((u: PublicUser) => u.id !== user.id)
+        setAvailableUsers(filteredUsers)
+
+        // Fetch followed users
+        try {
+          const userData = await accountsApi.getCurrentUser()
+          setFollowedUsers(userData.following || [])
+        } catch (error) {
+          console.error("Error fetching followed users:", error)
+          setFollowedUsers([])
+        }
+
+        // Set default tab based on conversations
+        if (conversationsList.length === 0) {
+          setActiveTab("users")
+        }
+
+        // Select the first conversation by default if there are any
+        if (conversationsList.length > 0 && !selectedConversation) {
+          setSelectedConversation(conversationsList[0])
           setShowMobileConversations(false)
         }
       } catch (error) {
-        console.error("Error fetching conversations:", error)
-        setConversations(mockConversations as unknown as Conversation[])
+        console.error("Error fetching data:", error)
+        setConversations(mockConversations)
+        setAvailableUsers(mockContacts)
 
         if (mockConversations.length > 0 && !selectedConversation) {
-          setSelectedConversation(mockConversations[0] as unknown as Conversation)
+          setSelectedConversation(mockConversations[0])
           setShowMobileConversations(false)
         }
       } finally {
@@ -72,7 +114,7 @@ export default function MessengerPage() {
       }
     }
 
-    fetchConversations()
+    fetchData()
   }, [user])
 
   // Fetch messages for selected conversation
@@ -82,20 +124,19 @@ export default function MessengerPage() {
 
       try {
         // In a real app, you would fetch messages for the specific conversation
-        const messagesData = (await chatApi.getMessages()) as Message[]
+        const messagesData = (await chatApi.getMessages()) as any[]
 
         // Filter messages for the selected conversation
-        // This is a simplification - in a real app, the API would return only relevant messages
         const filteredMessages = messagesData.filter(
-          (msg: Message) =>
+          (msg) =>
             (msg.sender === user?.id && msg.receiver === selectedConversation.participants[0].id) ||
             (msg.sender === selectedConversation.participants[0].id && msg.receiver === user?.id),
-        )
+        ) as Message[]
 
-        setMessages(filteredMessages.length > 0 ? filteredMessages : (mockMessages as unknown as Message[]))
+        setMessages(filteredMessages.length > 0 ? filteredMessages : mockMessages)
       } catch (error) {
         console.error("Error fetching messages:", error)
-        setMessages(mockMessages as unknown as Message[])
+        setMessages(mockMessages)
       }
     }
 
@@ -111,21 +152,17 @@ export default function MessengerPage() {
       }
 
       try {
-        // In a real app, you would call an API to search users
-        const users = await accountsApi.getPublicUsers()
-        const filtered: PublicUser[] = users.filter((user: PublicUser) => 
-          user.username.toLowerCase().includes(searchQuery.toLowerCase())
+        // Search in both available users and conversations
+        const filteredUsers = availableUsers.filter(
+          (user) =>
+            user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())),
         )
-        setSearchResults(
-          filtered.length > 0
-            ? filtered
-            : mockContacts.filter((contact) => contact.username.toLowerCase().includes(searchQuery.toLowerCase())),
-        )
+
+        setSearchResults(filteredUsers)
       } catch (error) {
         console.error("Error searching users:", error)
-        setSearchResults(
-          mockContacts.filter((contact) => contact.username.toLowerCase().includes(searchQuery.toLowerCase())),
-        )
+        setSearchResults([])
       }
     }
 
@@ -134,7 +171,7 @@ export default function MessengerPage() {
     } else {
       setSearchResults([])
     }
-  }, [searchQuery])
+  }, [searchQuery, availableUsers])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -149,6 +186,7 @@ export default function MessengerPage() {
         {
           id: "2",
           username: "johndoe",
+          email: "johndoe@example.com",
           profile_image: "/placeholder.svg?height=40&width=40&text=JD",
         },
       ],
@@ -157,7 +195,7 @@ export default function MessengerPage() {
         sender: "2",
         receiver: user?.id || "1",
         content: "Bạn đã nghe bài hát mới của Sơn Tùng chưa?",
-        type: "text",
+        type: MessageTypeEnum.TEXT,
         created_at: new Date(Date.now() - 3600000).toISOString(),
         is_read: true,
       },
@@ -170,6 +208,7 @@ export default function MessengerPage() {
         {
           id: "3",
           username: "janedoe",
+          email: "janedoe@example.com",
           profile_image: "/placeholder.svg?height=40&width=40&text=JD",
         },
       ],
@@ -178,33 +217,12 @@ export default function MessengerPage() {
         sender: user?.id || "1",
         receiver: "3",
         content: "Tôi vừa tạo một playlist mới, bạn có muốn xem không?",
-        type: "text",
+        type: MessageTypeEnum.TEXT,
         created_at: new Date(Date.now() - 86400000).toISOString(),
         is_read: true,
       },
       created_at: new Date(Date.now() - 86400000 * 14).toISOString(),
       updated_at: new Date(Date.now() - 86400000).toISOString(),
-    },
-    {
-      id: "3",
-      participants: [
-        {
-          id: "4",
-          username: "bobsmith",
-          profile_image: "/placeholder.svg?height=40&width=40&text=BS",
-        },
-      ],
-      last_message: {
-        id: "103",
-        sender: "4",
-        receiver: user?.id || "1",
-        content: "Bài hát này hay quá!",
-        type: "text",
-        created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-        is_read: false,
-      },
-      created_at: new Date(Date.now() - 86400000 * 30).toISOString(),
-      updated_at: new Date(Date.now() - 86400000 * 2).toISOString(),
     },
   ]
 
@@ -250,7 +268,7 @@ export default function MessengerPage() {
       sender: user?.id || "1",
       receiver: "2",
       content: "",
-      type: MessageTypeEnum.AUDIO,
+      type: MessageTypeEnum.MUSIC,
       created_at: new Date(Date.now() - 3600000 * 1.6).toISOString(),
       is_read: true,
       shared_song: {
@@ -258,9 +276,7 @@ export default function MessengerPage() {
         title: "Chúng Ta Của Hiện Tại",
         artist: "Sơn Tùng M-TP",
         cover_image: "/placeholder.svg?height=60&width=60",
-        duration: 240,
-        file_path: "/path/to/song.mp3",
-        created_at: new Date().toISOString(),
+        duration: 240, // Add duration to fix Song type
       },
     },
     {
@@ -272,46 +288,38 @@ export default function MessengerPage() {
       created_at: new Date(Date.now() - 3600000 * 1.5).toISOString(),
       is_read: true,
     },
-    {
-      id: "1007",
-      sender: user?.id || "1",
-      receiver: "2",
-      content: "Không có gì. Tôi đang nghe bài này suốt ngày luôn.",
-      type: MessageTypeEnum.TEXT,
-      created_at: new Date(Date.now() - 3600000 * 1.4).toISOString(),
-      is_read: true,
-    },
-    {
-      id: "1008",
-      sender: "2",
-      receiver: user?.id || "1",
-      content: "Bạn đã nghe bài hát mới của Sơn Tùng chưa?",
-      type: MessageTypeEnum.TEXT,
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      is_read: true,
-    },
   ]
 
   const mockContacts = [
     {
       id: "2",
       username: "johndoe",
+      email: "johndoe@example.com",
       profile_image: "/placeholder.svg?height=40&width=40&text=JD",
     },
     {
       id: "3",
       username: "janedoe",
+      email: "janedoe@example.com",
       profile_image: "/placeholder.svg?height=40&width=40&text=JD",
     },
     {
       id: "4",
       username: "bobsmith",
+      email: "bobsmith@example.com",
       profile_image: "/placeholder.svg?height=40&width=40&text=BS",
     },
     {
       id: "5",
       username: "alicejones",
+      email: "alice.jones@example.com",
       profile_image: "/placeholder.svg?height=40&width=40&text=AJ",
+    },
+    {
+      id: "6",
+      username: "miketaylor",
+      email: "mike.taylor@example.com",
+      profile_image: "/placeholder.svg?height=40&width=40&text=MT",
     },
   ]
 
@@ -321,40 +329,32 @@ export default function MessengerPage() {
       title: "Chúng Ta Của Hiện Tại",
       artist: "Sơn Tùng M-TP",
       cover_image: "/placeholder.svg?height=60&width=60",
-      duration: 240,
-      file_path: "/path/to/song.mp3",
-      created_at: new Date().toISOString(),
+      duration: 289,
     },
     {
       id: "s2",
       title: "Ngày Mai Em Đi",
       artist: "Lê Hiếu, SOOBIN, Touliver",
       cover_image: "/placeholder.svg?height=60&width=60",
-      duration: 230,
-      file_path: "/path/to/song2.mp3",
-      created_at: new Date().toISOString(),
+      duration: 218,
     },
     {
       id: "s3",
       title: "vạn vật như muốn ta bên nhau",
       artist: "RIO",
       cover_image: "/placeholder.svg?height=60&width=60",
-      duration: 220,
-      file_path: "/path/to/song3.mp3",
-      created_at: new Date().toISOString(),
+      duration: 248,
     },
     {
       id: "s4",
       title: "ADAMN",
       artist: "Bình Gold",
       cover_image: "/placeholder.svg?height=60&width=60",
-      duration: 210,
-      file_path: "/path/to/song4.mp3",
-      created_at: new Date().toISOString(),
+      duration: 253,
     },
   ]
 
-  const displayConversations = conversations.length > 0 ? conversations : mockConversations
+  const displayConversations = conversations
   const displayMessages = messages.length > 0 ? messages : mockMessages
   const displayRecentSongs = recentSongs.length > 0 ? recentSongs : mockRecentSongs
 
@@ -365,14 +365,14 @@ export default function MessengerPage() {
       const messageData = {
         receiver: selectedConversation.participants[0].id,
         content: newMessage,
-        type: "text" as MessageTypeEnum.TEXT,
+        type: "text",
       }
 
       // In a real app, you would send the message to the API
-      const sentMessage = (await chatApi.createMessage(messageData)) as Message
+      const sentMessage = await chatApi.createMessage(messageData)
 
       // Update the messages list
-      setMessages([...displayMessages, sentMessage])
+      setMessages([...displayMessages, sentMessage as Message])
 
       // Clear the input
       setNewMessage("")
@@ -380,7 +380,7 @@ export default function MessengerPage() {
       console.error("Error sending message:", error)
 
       // Fallback for demo
-      const mockSentMessage: Message = {
+      const mockSentMessage = {
         id: `new-${Date.now()}`,
         sender: user?.id || "1",
         receiver: selectedConversation.participants[0].id,
@@ -402,7 +402,7 @@ export default function MessengerPage() {
       const messageData = {
         receiver: selectedConversation.participants[0].id,
         content: "",
-        type: MessageTypeEnum.AUDIO,
+        type: "music",
         shared_song: song.id,
       }
 
@@ -413,7 +413,7 @@ export default function MessengerPage() {
       setMessages([
         ...displayMessages,
         {
-          ...sentMessage,
+          ...(sentMessage as object),
           shared_song: song,
         } as Message,
       ])
@@ -424,19 +424,75 @@ export default function MessengerPage() {
       console.error("Error sharing song:", error)
 
       // Fallback for demo
-      const mockSentMessage: Message = {
+      const mockSentMessage = {
         id: `new-${Date.now()}`,
         sender: user?.id || "1",
         receiver: selectedConversation.participants[0].id,
         content: "",
-        type: MessageTypeEnum.AUDIO,
+        type: MessageTypeEnum.MUSIC,
         created_at: new Date().toISOString(),
         is_read: false,
-        shared_song: song as Song,
+        shared_song: song,
       }
 
       setMessages([...displayMessages, mockSentMessage])
       setShowShareMusic(false)
+    }
+  }
+
+  const handleFollowUser = async (userId: string) => {
+    if (followLoading) return
+
+    setFollowLoading(userId)
+    try {
+      // Call API to follow user
+      await accountsApi.followUser(userId)
+
+      // Update followed users list
+      setFollowedUsers([...followedUsers, userId])
+
+      toast({
+        title: "Đã theo dõi người dùng",
+        description: "Bạn có thể bắt đầu trò chuyện ngay bây giờ.",
+      })
+    } catch (error) {
+      console.error("Error following user:", error)
+
+      // For demo purposes, still update the UI
+      setFollowedUsers([...followedUsers, userId])
+    } finally {
+      setFollowLoading(null)
+    }
+  }
+
+  const startConversation = (contact: PublicUser) => {
+    // Check if conversation already exists
+    const existingConv = displayConversations.find((conv) => conv.participants[0].id === contact.id)
+
+    if (existingConv) {
+      selectConversation(existingConv)
+    } else {
+      // Create a new conversation
+      const newConv = {
+        id: `new-${contact.id}`,
+        participants: [contact],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as Conversation
+
+      // Add to conversations list
+      setConversations([newConv, ...displayConversations])
+      selectConversation(newConv)
+    }
+
+    setSearchQuery("")
+    setActiveTab("conversations")
+  }
+
+  const selectConversation = (conversation: Conversation) => {
+    setSelectedConversation(conversation)
+    if (isMobile) {
+      setShowMobileConversations(false)
     }
   }
 
@@ -460,32 +516,8 @@ export default function MessengerPage() {
     }
   }
 
-  const selectConversation = (conversation: Conversation | any) => {
-    setSelectedConversation(conversation as Conversation)
-    if (isMobile) {
-      setShowMobileConversations(false)
-    }
-  }
-
-  const startNewConversation = (contact: PublicUser) => {
-    // Check if conversation already exists
-    const existingConv = displayConversations.find((conv) => conv.participants[0].id === contact.id)
-
-    if (existingConv) {
-      selectConversation(existingConv)
-    } else {
-      // Create a new conversation
-      const newConv = {
-        id: `new-${contact.id}`,
-        participants: [contact as unknown as User],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as Conversation
-
-      selectConversation(newConv)
-    }
-
-    setSearchQuery("")
+  const isUserFollowed = (userId: string) => {
+    return followedUsers.includes(userId)
   }
 
   if (!user) {
@@ -495,19 +527,19 @@ export default function MessengerPage() {
   return (
     <div className="h-screen flex bg-black text-white">
       {/* Sidebar - Conversations list */}
-      <div 
+      <div
         className={`${
           isMobile
             ? `fixed inset-0 z-20 ${showMobileConversations ? "block" : "hidden"}`
             : "w-80 border-r border-white/10"
-        } bg-zinc-900 flex flex-col `}
+        } bg-zinc-900 flex flex-col`}
       >
         <div className="p-4 border-b border-white/10">
           <h1 className="text-xl font-bold mb-4">Tin nhắn</h1>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input
-              placeholder="Tìm kiếm người dùng"
+              placeholder="Tìm kiếm tên hoặc email"
               className="pl-9 bg-zinc-800 border-none h-10 text-white focus-visible:ring-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -515,83 +547,207 @@ export default function MessengerPage() {
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
-          {/* Search results */}
-          {searchQuery && searchResults.length > 0 && (
-            <div className="p-2">
-              <div className="text-xs text-white/50 uppercase px-3 py-2">Kết quả tìm kiếm</div>
-              {searchResults.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-zinc-800/50 transition-colors"
-                  onClick={() => startNewConversation(contact)}
-                >
-                  <Image
-                    src={contact.profile_image || "/placeholder.svg?height=48&width=48"}
-                    width={48}
-                    height={48}
-                    alt={contact.username}
-                    className="rounded-full"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium truncate">{contact.username}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "conversations" | "users")}
+          className="flex-1 flex flex-col"
+        >
+          <TabsList className="grid grid-cols-2 bg-transparent border-b border-white/10">
+            <TabsTrigger
+              value="conversations"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-green-500 rounded-none"
+            >
+              Trò chuyện
+              {displayConversations.length > 0 && (
+                <Badge className="ml-2 bg-green-500 text-black">{displayConversations.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-green-500 rounded-none"
+            >
+              Người dùng
+              <Badge className="ml-2 bg-zinc-700">{availableUsers.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
 
-          {/* No search results */}
-          {searchQuery && searchResults.length === 0 && (
-            <div className="p-6 text-center">
-              <p className="text-white/50">Không tìm thấy người dùng nào</p>
-            </div>
-          )}
-
-          {/* Conversations list */}
-          {!searchQuery && (
-            <div className="p-2">
-              <div className="text-xs text-white/50 uppercase px-3 py-2">Tin nhắn gần đây</div>
-              {displayConversations.map((conversation) => (
-                <div
-                  key={conversation.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedConversation?.id === conversation.id ? "bg-zinc-800" : "hover:bg-zinc-800/50"
-                  }`}
-                  onClick={() => selectConversation(conversation)}
-                >
-                  <Image
-                    src={conversation.participants[0].profile_image || "/placeholder.svg?height=48&width=48"}
-                    width={48}
-                    height={48}
-                    alt={conversation.participants[0].username}
-                    className="rounded-full"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium truncate">{conversation.participants[0].username}</span>
-                      {conversation.last_message && (
-                        <span className="text-xs text-white/50">
-                          {formatTime(conversation.last_message?.created_at || conversation.updated_at)}
-                        </span>
-                      )}
+          <ScrollArea className="flex-1">
+            {/* Search results */}
+            {searchQuery && searchResults.length > 0 && (
+              <div className="p-2">
+                <div className="text-xs text-white/50 uppercase px-3 py-2">Kết quả tìm kiếm</div>
+                {searchResults.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/50 transition-colors"
+                  >
+                    <Image
+                      src={contact.profile_image || "/placeholder.svg?height=48&width=48"}
+                      width={48}
+                      height={48}
+                      alt={contact.username}
+                      className="rounded-full"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium truncate">{contact.username}</span>
+                      {contact.email && <div className="text-xs text-white/60 truncate">{contact.email}</div>}
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-white/70 truncate">
-                        {conversation.last_message?.type === "music"
-                          ? "Đã chia sẻ một bài hát"
-                          : conversation.last_message?.content}
-                      </span>
-                      {!conversation.last_message?.is_read && conversation.last_message?.sender !== user.id && (
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      )}
-                    </div>
+                    {isUserFollowed(contact.id) ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-green-500"
+                        onClick={() => startConversation(contact)}
+                      >
+                        Nhắn tin
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-green-500 text-green-500 hover:bg-green-500/10"
+                        onClick={() => handleFollowUser(contact.id)}
+                        disabled={followLoading === contact.id}
+                      >
+                        {followLoading === contact.id ? (
+                          <div className="h-4 w-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin mr-1" />
+                        ) : (
+                          <UserPlus className="h-4 w-4 mr-1" />
+                        )}
+                        Theo dõi
+                      </Button>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+                ))}
+              </div>
+            )}
+
+            {/* No search results */}
+            {searchQuery && searchResults.length === 0 && (
+              <div className="p-6 text-center">
+                <p className="text-white/50">Không tìm thấy người dùng nào</p>
+              </div>
+            )}
+
+            {/* Conversations tab */}
+            {!searchQuery && activeTab === "conversations" && (
+              <div className="p-2">
+                {displayConversations.length > 0 ? (
+                  <>
+                    <div className="text-xs text-white/50 uppercase px-3 py-2">Tin nhắn gần đây</div>
+                    {displayConversations.map((conversation) => (
+                      <div
+                        key={conversation.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedConversation?.id === conversation.id ? "bg-zinc-800" : "hover:bg-zinc-800/50"
+                        }`}
+                        onClick={() => selectConversation(conversation)}
+                      >
+                        <Image
+                          src={conversation.participants[0].profile_image || "/placeholder.svg?height=48&width=48"}
+                          width={48}
+                          height={48}
+                          alt={conversation.participants[0].username}
+                          className="rounded-full"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium truncate">{conversation.participants[0].username}</span>
+                            {conversation.last_message && (
+                              <span className="text-xs text-white/50">
+                                {formatTime(conversation.last_message?.created_at || conversation.updated_at)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-white/70 truncate">
+                              {conversation.last_message?.type === "music"
+                                ? "Đã chia sẻ một bài hát"
+                                : conversation.last_message?.content || "Bắt đầu cuộc trò chuyện"}
+                            </span>
+                            {conversation.last_message &&
+                              !conversation.last_message.is_read &&
+                              conversation.last_message.sender !== user.id && (
+                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                              )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <div className="bg-zinc-800 rounded-full p-4 mb-4">
+                      <MessageSquare className="h-8 w-8 text-zinc-400" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">Chưa có cuộc trò chuyện nào</h3>
+                    <p className="text-zinc-400 mb-4">
+                      Bạn chưa có cuộc trò chuyện nào. Hãy theo dõi người dùng để bắt đầu trò chuyện.
+                    </p>
+                    <Button
+                      onClick={() => setActiveTab("users")}
+                      className="bg-green-500 hover:bg-green-600 text-black"
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Xem người dùng
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Users tab */}
+            {!searchQuery && activeTab === "users" && (
+              <div className="p-2">
+                <div className="text-xs text-white/50 uppercase px-3 py-2">Tất cả người dùng</div>
+                {availableUsers.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/50 transition-colors"
+                  >
+                    <Image
+                      src={contact.profile_image || "/placeholder.svg?height=48&width=48"}
+                      width={48}
+                      height={48}
+                      alt={contact.username}
+                      className="rounded-full"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium truncate">{contact.username}</span>
+                      {contact.email && <div className="text-xs text-white/60 truncate">{contact.email}</div>}
+                    </div>
+                    {isUserFollowed(contact.id) ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-green-500"
+                        onClick={() => startConversation(contact)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Nhắn tin
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-green-500 text-green-500 hover:bg-green-500/10"
+                        onClick={() => handleFollowUser(contact.id)}
+                        disabled={followLoading === contact.id}
+                      >
+                        {followLoading === contact.id ? (
+                          <div className="h-4 w-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin mr-1" />
+                        ) : (
+                          <UserPlus className="h-4 w-4 mr-1" />
+                        )}
+                        Theo dõi
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </Tabs>
       </div>
 
       {/* Chat area */}
@@ -678,9 +834,7 @@ export default function MessengerPage() {
                       )}
 
                       <div className={`max-w-[70%] ${isCurrentUser ? "bg-green-600" : "bg-zinc-700"} rounded-2xl p-3`}>
-                        {message.type === MessageTypeEnum.TEXT ? (
-                          <p>{message.content}</p>
-                        ) : message.type === MessageTypeEnum.AUDIO && message.shared_song ? (
+                        {message.type === MessageTypeEnum.MUSIC && message.shared_song ? (
                           <div className="bg-zinc-800 rounded-lg p-2 flex items-center gap-3">
                             <Image
                               src={message.shared_song.cover_image || "/placeholder.svg?height=60&width=60"}
@@ -697,7 +851,9 @@ export default function MessengerPage() {
                               <Play className="h-4 w-4 ml-0.5" />
                             </Button>
                           </div>
-                        ) : null}
+                        ) : (
+                          <p>{message.content}</p>
+                        )}
                         <div className="text-right mt-1">
                           <span className="text-xs text-white/50">{formatTime(message.created_at)}</span>
                         </div>
@@ -723,7 +879,7 @@ export default function MessengerPage() {
                     <div
                       key={song.id}
                       className="bg-zinc-800 rounded-lg p-3 cursor-pointer hover:bg-zinc-700 transition-colors"
-                      onClick={() => handleShareSong(song)}
+                      onClick={() => handleShareSong(song as Song)}
                     >
                       <div className="relative mb-2">
                         <Image
@@ -789,14 +945,16 @@ export default function MessengerPage() {
             <Music className="h-16 w-16 text-white/30 mb-4" />
             <h2 className="text-2xl font-bold mb-2">Chia sẻ âm nhạc với bạn bè</h2>
             <p className="text-white/70 max-w-md mb-6">
-              Chọn một cuộc trò chuyện để bắt đầu chia sẻ âm nhạc và trò chuyện với bạn bè của bạn.
+              {displayConversations.length > 0
+                ? "Chọn một cuộc trò chuyện để bắt đầu chia sẻ âm nhạc và trò chuyện với bạn bè của bạn."
+                : "Theo dõi người dùng để bắt đầu trò chuyện và chia sẻ âm nhạc với họ."}
             </p>
             {isMobile && (
               <Button
                 className="bg-green-500 hover:bg-green-600 text-black"
                 onClick={() => setShowMobileConversations(true)}
               >
-                Xem danh sách trò chuyện
+                {displayConversations.length > 0 ? "Xem danh sách trò chuyện" : "Tìm người dùng"}
               </Button>
             )}
           </div>

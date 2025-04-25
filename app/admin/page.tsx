@@ -1,12 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Music, Disc, ListMusic, BarChart3 } from "lucide-react";
-import { musicApi, accountsApi } from "@/lib/api";
-import type { User, Song, Album, Playlist } from "@/types";
-import { useAuth } from "@/context/auth-context";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Users, Music, Disc, ListMusic, BarChart3 } from "lucide-react"
+import { musicApi, accountsApi } from "@/lib/api"
+import type { User, Song, Album, Playlist } from "@/types"
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -16,14 +14,8 @@ export default function AdminDashboard() {
     playlists: 0,
   })
   const [loading, setLoading] = useState(true)
-  const { user, isAdmin, isLoading: authLoading } = useAuth() // Lấy isAdmin và trạng thái loading từ context
-  const router = useRouter()
 
   useEffect(() => {
-    if (!isAdmin) {
-      router.push("/dashboard")
-      return
-    }
     const fetchStats = async () => {
       try {
         setLoading(true)
@@ -65,7 +57,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Bảng điều khiển quản trị</h1>
+      <h1 className="text-3xl font-bold mb-6">Bảng điều khiển quản trị</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-zinc-800 border-zinc-700 text-white">
