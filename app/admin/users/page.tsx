@@ -35,6 +35,7 @@ export default function AdminUsersPage() {
     password: "",
     first_name: "",
     last_name: "",
+    created_at: "",
     is_staff: false,
     is_active: true,
   })
@@ -43,47 +44,10 @@ export default function AdminUsersPage() {
     const fetchUsers = async () => {
       try {
         setLoading(true)
-        const data = await accountsApi.getUsers()
+        const data = await accountsApi.getUsers_ad()
         setUsers(data as User[])
       } catch (error) {
         console.error("Error fetching users:", error)
-        // Fallback to mock data
-        const mockUsers = [
-          {
-            id: "1",
-            username: "admin",
-            email: "admin@example.com",
-            first_name: "Admin",
-            last_name: "User",
-            profile_image: "/placeholder.svg?height=40&width=40&text=A",
-            created_at: new Date().toISOString(),
-            is_staff: true,
-            is_active: true,
-          },
-          {
-            id: "2",
-            username: "johndoe",
-            email: "john@example.com",
-            first_name: "John",
-            last_name: "Doe",
-            profile_image: "/placeholder.svg?height=40&width=40&text=JD",
-            created_at: new Date().toISOString(),
-            is_staff: false,
-            is_active: true,
-          },
-          {
-            id: "3",
-            username: "janedoe",
-            email: "jane@example.com",
-            first_name: "Jane",
-            last_name: "Doe",
-            profile_image: "/placeholder.svg?height=40&width=40&text=JD",
-            created_at: new Date().toISOString(),
-            is_staff: false,
-            is_active: true,
-          },
-        ]
-        setUsers(mockUsers)
       } finally {
         setLoading(false)
       }
@@ -113,6 +77,7 @@ export default function AdminUsersPage() {
         password: "",
         first_name: "",
         last_name: "",
+        created_at: "",
         is_staff: false,
         is_active: true,
       })
@@ -197,7 +162,7 @@ export default function AdminUsersPage() {
             <TableRow className="hover:bg-zinc-700/50">
               <TableHead className="text-zinc-400">Người dùng</TableHead>
               <TableHead className="text-zinc-400">Email</TableHead>
-              <TableHead className="text-zinc-400">Vai trò</TableHead>
+              <TableHead className="text-zinc-400">Ngày tạo</TableHead>
               <TableHead className="text-zinc-400 text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
@@ -239,17 +204,7 @@ export default function AdminUsersPage() {
                     <div
                       className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs w-fit ${user.is_admin ? "bg-purple-500/20 text-purple-500" : "bg-green-500/20 text-green-500"}`}
                     >
-                      {user.is_admin ? (
-                        <>
-                          <ShieldAlert className="h-3 w-3" />
-                          <span>Admin</span>
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="h-3 w-3" />
-                          <span>Người dùng</span>
-                        </>
-                      )}
+                      {user.created_at}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">

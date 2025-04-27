@@ -21,6 +21,7 @@ export interface UserResponse {
   last_name?: string
   profile_image?: string
   following?: string[]
+  created_at?: string
 }
 
 // Interface cho response của API đăng nhập
@@ -179,16 +180,20 @@ export class AuthCollection extends ApiRequest {
   }
 
   register(userData: any) {
-    return this.post("/api/v1/accounts/users/", userData)
+    return this.post("/api/v1/accounts/auth/register/", userData)
   }
 
   // Add password reset methods
   requestPasswordReset(email: string) {
-    return this.post("/api/v1/accounts/password-reset/", { email })
+    return this.post("/api/v1/accounts/auth/forgot-password/", { email })
   }
 
-  verifyResetToken(token: string) {
-    return this.get(`/api/v1/accounts/password-reset/verify/${token}/`)
+  verifyResetTokenAndSetPassword(email: string, token: string, newPassword: string) {
+    return this.post<any>("/api/v1/accounts/auth/verify-reset-token/", {
+      email,
+      token,
+      new_password: newPassword,
+    })
   }
 
   resetPassword(token: string, password: string) {
@@ -204,6 +209,9 @@ export class AccountsCollection extends ApiRequest {
 
   getUsers() {
     return this.get<any>("/api/v1/accounts/users/")
+  }
+  getUsers_ad() {
+    return this.get<any>("/api/v1/accounts/admin/users/")
   }
 
   createUser(userData: any) {

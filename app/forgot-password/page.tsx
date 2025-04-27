@@ -6,14 +6,24 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Eye, EyeOff } from "lucide-react"
+import postmanApi from "@/lib/api/postman"
 
 export default function ForgotPasswordPage() {
+  // Form states
   const [email, setEmail] = useState("")
+  const [resetToken, setResetToken] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+
+  // UI states
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [currentStep, setCurrentStep] = useState<"request" | "reset" | "success">("request")
   const [error, setError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle email request submission
+  const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -32,16 +42,56 @@ export default function ForgotPasswordPage() {
     try {
       setIsSubmitting(true)
 
-      // In a real app, you would call your API to send a password reset email
-      // await authApi.requestPasswordReset(email)
+      // Call the API to request password reset
+      await postmanApi.auth.requestPasswordReset(email)
 
-      // For demo purposes, we'll simulate the API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      setIsSubmitted(true)
+      // Move to the reset password step
+      setCurrentStep("reset")
     } catch (err) {
       console.error("Error requesting password reset:", err)
       setError("Có lỗi xảy ra. Vui lòng thử lại sau.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Handle reset password submission
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    // Validate inputs
+    if (!resetToken) {
+      setError("Vui lòng nhập mã xác nhận")
+      return
+    }
+
+    if (!newPassword) {
+      setError("Vui lòng nhập mật khẩu mới")
+      return
+    }
+
+    if (newPassword.length < 8) {
+      setError("Mật khẩu phải có ít nhất 8 ký tự")
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp")
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+
+      // Call API to verify token and set new password
+      await postmanApi.auth.verifyResetTokenAndSetPassword(email, resetToken, newPassword)
+
+      // Move to success step
+      setCurrentStep("success")
+    } catch (err) {
+      console.error("Error resetting password:", err)
+      setError("Có lỗi xảy ra. Mã xác nhận có thể không hợp lệ hoặc đã hết hạn.")
     } finally {
       setIsSubmitting(false)
     }
@@ -63,13 +113,13 @@ export default function ForgotPasswordPage() {
 
         <h1 className="text-2xl font-bold text-center mb-4">Đặt lại mật khẩu</h1>
 
-        {!isSubmitted ? (
+        {currentStep === "request" && (
           <>
             <p className="text-white/70 text-center mb-6">
-              Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn một liên kết để đặt lại mật khẩu.
+              Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn một mã xác nhận để đặt lại mật khẩu.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleRequestReset} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-2">
                   Địa chỉ email
@@ -92,7 +142,7 @@ export default function ForgotPasswordPage() {
                 className="w-full bg-green-500 hover:bg-green-600 text-black font-bold"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Đang xử lý..." : "Gửi liên kết đặt lại"}
+                {isSubmitting ? "Đang xử lý..." : "Gửi mã xác nhận"}
               </Button>
 
               <div className="text-center mt-4">
@@ -102,7 +152,103 @@ export default function ForgotPasswordPage() {
               </div>
             </form>
           </>
-        ) : (
+        )}
+
+        {currentStep === "reset" && (
+          <>
+            <div className="bg-green-500/20 text-green-500 p-4 rounded-lg mb-6">
+              <p className="font-medium">Đã gửi mã xác nhận!</p>
+              <p className="text-sm mt-1">
+                Chúng tôi đã gửi một mã xác nhận đến <span className="font-medium">{email}</span>
+              </p>
+            </div>
+
+            <p className="text-white/70 text-center mb-6">Vui lòng nhập mã xác nhận và mật khẩu mới của bạn.</p>
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label htmlFor="reset-token" className="block text-sm font-medium mb-2">
+                  Mã xác nhận
+                </label>
+                <Input
+                  id="reset-token"
+                  type="text"
+                  placeholder="Nhập mã xác nhận từ email"
+                  value={resetToken}
+                  onChange={(e) => setResetToken(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="relative">
+                <label htmlFor="new-password" className="block text-sm font-medium mb-2">
+                  Mật khẩu mới
+                </label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nhập mật khẩu mới"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="bg-zinc-800 border-zinc-700 text-white pr-10"
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirm-password" className="block text-sm font-medium mb-2">
+                  Xác nhận mật khẩu
+                </label>
+                <Input
+                  id="confirm-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Xác nhận mật khẩu mới"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+
+              <Button
+                type="submit"
+                className="w-full bg-green-500 hover:bg-green-600 text-black font-bold"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}
+              </Button>
+
+              <div className="text-center mt-4">
+                <Button
+                  variant="link"
+                  className="text-white/70"
+                  onClick={() => {
+                    setEmail("")
+                    setCurrentStep("request")
+                    setError("")
+                  }}
+                  type="button"
+                >
+                  Thử với email khác
+                </Button>
+              </div>
+            </form>
+          </>
+        )}
+
+        {currentStep === "success" && (
           <div className="text-center">
             <div className="bg-green-500/20 text-green-500 p-4 rounded-lg mb-6">
               <svg
@@ -119,34 +265,17 @@ export default function ForgotPasswordPage() {
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <p className="font-medium">Đã gửi email đặt lại mật khẩu!</p>
+              <p className="font-medium">Mật khẩu đã được đặt lại thành công!</p>
             </div>
 
             <p className="text-white/70 mb-6">
-              Chúng tôi đã gửi một email đến <span className="font-medium text-white">{email}</span> với hướng dẫn để
-              đặt lại mật khẩu của bạn.
-            </p>
-
-            <p className="text-white/70 mb-6">
-              Email có thể mất vài phút để đến. Vui lòng kiểm tra cả thư mục spam nếu bạn không thấy email trong hộp thư
-              đến.
+              Mật khẩu của bạn đã được cập nhật. Bạn có thể đăng nhập bằng mật khẩu mới ngay bây giờ.
             </p>
 
             <div className="flex flex-col space-y-2">
               <Link href="/login">
-                <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white">Quay lại đăng nhập</Button>
+                <Button className="w-full bg-green-500 hover:bg-green-600 text-black font-bold">Đăng nhập ngay</Button>
               </Link>
-
-              <Button
-                variant="link"
-                className="text-white/70"
-                onClick={() => {
-                  setEmail("")
-                  setIsSubmitted(false)
-                }}
-              >
-                Thử với email khác
-              </Button>
             </div>
           </div>
         )}
