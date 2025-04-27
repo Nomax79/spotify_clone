@@ -13,12 +13,15 @@ const API_CONFIG = {
 
 // Interface cho response của thông tin người dùng
 export interface UserResponse {
+  is_admin: boolean
   id: string
   username: string
   email: string
   first_name?: string
   last_name?: string
   profile_image?: string
+  following?: string[]
+  created_at?: string
 }
 
 // Interface cho response của API đăng nhập
@@ -168,7 +171,7 @@ class ApiRequest {
 // Collection cho Auth API
 export class AuthCollection extends ApiRequest {
   login(email: string, password: string): Promise<LoginResponse> {
-    return this.post<LoginResponse>("/api/token/", { email, password })
+    return this.post<LoginResponse>("/api/v1/auth/token/", { email, password })
   }
 
   // Ghi đè refreshToken (không bắt buộc vì đã có ở lớp cha, nhưng có thể để tùy chỉnh)
@@ -177,98 +180,105 @@ export class AuthCollection extends ApiRequest {
   }
 
   register(userData: any) {
-    return this.post("/accounts/users/", userData)
+    return this.post("/api/v1/accounts/auth/register/", userData)
   }
 
   // Add password reset methods
   requestPasswordReset(email: string) {
-    return this.post("/accounts/password-reset/", { email })
+    return this.post("/api/v1/accounts/auth/forgot-password/", { email })
   }
 
-  verifyResetToken(token: string) {
-    return this.get(`/accounts/password-reset/verify/${token}/`)
+  verifyResetTokenAndSetPassword(email: string, token: string, newPassword: string) {
+    return this.post<any>("/api/v1/accounts/auth/verify-reset-token/", {
+      email,
+      token,
+      new_password: newPassword,
+    })
   }
 
   resetPassword(token: string, password: string) {
-    return this.post("/accounts/password-reset/confirm/", { token, password })
+    return this.post("/api/v1/accounts/password-reset/confirm/", { token, password })
   }
 }
 
 // Collection cho User API
 export class AccountsCollection extends ApiRequest {
   getPublicUsers() {
-    return this.get<any>("/accounts/public/users/")
+    return this.get<any>("/api/v1/accounts/public/users/")
   }
 
   getUsers() {
-    return this.get<any>("/accounts/users/")
+    return this.get<any>("/api/v1/accounts/users/")
+  }
+  getUsers_ad() {
+    return this.get<any>("/api/v1/accounts/admin/users/")
   }
 
   createUser(userData: any) {
-    return this.post<any>("/accounts/users/", userData)
+    return this.post<any>("/api/v1/accounts/users/", userData)
   }
 
   getUser(id: string) {
-    return this.get<any>(`/accounts/users/${id}/`)
+    return this.get<any>(`/api/v1/accounts/users/${id}/`)
   }
 
   updateUser(id: string, userData: any) {
-    return this.put<any>(`/accounts/users/${id}/`, userData)
+    return this.put<any>(`/api/v1/accounts/users/${id}/`, userData)
   }
 
   partialUpdateUser(id: string, userData: any) {
-    return this.patch<any>(`/accounts/users/${id}/`, userData)
+    return this.patch<any>(`/api/v1/accounts/users/${id}/`, userData)
   }
 
   deleteUser(id: string) {
-    return this.delete<any>(`/accounts/users/${id}/`)
+    return this.delete<any>(`/api/v1/accounts/users/${id}/`)
   }
 
   followUser(id: string) {
-    return this.post<any>(`/accounts/users/${id}/follow/`)
+    return this.post<any>(`/api/v1/accounts/users/${id}/follow/`)
   }
 
   unfollowUser(id: string) {
-    return this.post<any>(`/accounts/users/${id}/unfollow/`)
+    return this.post<any>(`/api/v1/accounts/users/${id}/unfollow/`)
   }
 
   getCurrentUser(): Promise<UserResponse> {
-    return this.get<UserResponse>("/api/accounts/users/me/")
+    return this.get<UserResponse>("/api/v1/accounts/users/me/")
   }
 }
 
 // Collection cho Chat API
 export class ChatCollection extends ApiRequest {
   getConversations() {
-    return this.get("/chat/conversations/")
+    return this.get("/api/v1/chat/conversations/")
   }
 
   getConversationWithUser(userId: string) {
-    return this.get(`/chat/conversations/${userId}/`)
+    return this.get(`/api/v1/chat/conversations/${userId}/`)
   }
 
   getMessages() {
-    return this.get("/chat/messages/")
+    return this.get("/api/v1/chat/messages/")
   }
 
   createMessage(messageData: any) {
-    return this.post("/chat/messages/", messageData)
+    return this.post("/api/v1/chat/messages/", messageData)
   }
 
   getMessage(id: string) {
-    return this.get(`/chat/messages/${id}/`)
+    return this.get(`/api/v1/chat/messages/${id}/`)
   }
 
   updateMessage(id: string, messageData: any) {
-    return this.put(`/chat/messages/${id}/`, messageData)
+    return this.put(`/api/v1/chat/messages/${id}/`, messageData)
   }
 
   partialUpdateMessage(id: string, messageData: any) {
-    return this.patch(`/chat/messages/${id}/`, messageData)
+    return this.patch(`/api/v1/chat/messages/${id}/`, messageData)
   }
 
   deleteMessage(id: string) {
-    return this.delete(`/chat/messages/${id}/`)
+    return this.delete(`/api/v1/chat/messages/${id}/`)
   }
 }
 
@@ -276,239 +286,239 @@ export class ChatCollection extends ApiRequest {
 export class MusicCollection extends ApiRequest {
   // Albums
   getAlbums() {
-    return this.get("/music/albums/")
+    return this.get("/api/v1/music/albums/")
   }
 
   createAlbum(albumData: any) {
-    return this.post("/music/albums/", albumData)
+    return this.post("/api/v1/music/albums/", albumData)
   }
 
   getAlbum(id: string) {
-    return this.get(`/music/albums/${id}/`)
+    return this.get(`/api/v1/music/albums/${id}/`)
   }
 
   updateAlbum(id: string, albumData: any) {
-    return this.put(`/music/albums/${id}/`, albumData)
+    return this.put(`/api/v1/music/albums/${id}/`, albumData)
   }
 
   partialUpdateAlbum(id: string, albumData: any) {
-    return this.patch(`/music/albums/${id}/`, albumData)
+    return this.patch(`/api/v1/music/albums/${id}/`, albumData)
   }
 
   deleteAlbum(id: string) {
-    return this.delete(`/music/albums/${id}/`)
+    return this.delete(`/api/v1/music/albums/${id}/`)
   }
 
   getAlbumSongs(id: string) {
-    return this.get(`/music/albums/${id}/songs/`)
+    return this.get(`/api/v1/music/albums/${id}/songs/`)
   }
 
   // Comments
   getComments() {
-    return this.get("/music/comments/")
+    return this.get("/api/v1/music/comments/")
   }
 
   createComment(commentData: any) {
-    return this.post("/music/comments/", commentData)
+    return this.post("/api/v1/music/comments/", commentData)
   }
 
   getComment(id: string) {
-    return this.get(`/music/comments/${id}/`)
+    return this.get(`/api/v1/music/comments/${id}/`)
   }
 
   updateComment(id: string, commentData: any) {
-    return this.put(`/music/comments/${id}/`, commentData)
+    return this.put(`/api/v1/music/comments/${id}/`, commentData)
   }
 
   partialUpdateComment(id: string, commentData: any) {
-    return this.patch(`/music/comments/${id}/`, commentData)
+    return this.patch(`/api/v1/music/comments/${id}/`, commentData)
   }
 
   deleteComment(id: string) {
-    return this.delete(`/music/comments/${id}/`)
+    return this.delete(`/api/v1/music/comments/${id}/`)
   }
 
   // Features
   getBasicFeatures() {
-    return this.get("/music/features/basic/")
+    return this.get("/api/v1/music/features/basic/")
   }
 
   // Genres
   getGenres() {
-    return this.get("/music/genres/")
+    return this.get("/api/v1/music/genres/")
   }
 
   createGenre(genreData: any) {
-    return this.post("/music/genres/", genreData)
+    return this.post("/api/v1/music/genres/", genreData)
   }
 
   getGenre(id: string) {
-    return this.get(`/music/genres/${id}/`)
+    return this.get(`/api/v1/music/genres/${id}/`)
   }
 
   updateGenre(id: string, genreData: any) {
-    return this.put(`/music/genres/${id}/`, genreData)
+    return this.put(`/api/v1/music/genres/${id}/`, genreData)
   }
 
   partialUpdateGenre(id: string, genreData: any) {
-    return this.patch(`/music/genres/${id}/`, genreData)
+    return this.patch(`/api/v1/music/genres/${id}/`, genreData)
   }
 
   deleteGenre(id: string) {
-    return this.delete(`/music/genres/${id}/`)
+    return this.delete(`/api/v1/music/genres/${id}/`)
   }
 
   getGenreSongs(id: string) {
-    return this.get(`/music/genres/${id}/songs/`)
+    return this.get(`/api/v1/music/genres/${id}/songs/`)
   }
 
   // Library
   getLibrary() {
-    return this.get("/music/library/")
+    return this.get("/api/v1/music/library/")
   }
 
   // Playlists
   getPlaylists() {
-    return this.get("/music/playlists/")
+    return this.get("/api/v1/music/playlists/")
   }
 
   createPlaylist(playlistData: any) {
-    return this.post("/music/playlists/", playlistData)
+    return this.post("/api/v1/music/playlists/", playlistData)
   }
 
   getPlaylist(id: string) {
-    return this.get(`/music/playlists/${id}/`)
+    return this.get(`/api/v1/music/playlists/${id}/`)
   }
 
   updatePlaylist(id: string, playlistData: any) {
-    return this.put(`/music/playlists/${id}/`, playlistData)
+    return this.put(`/api/v1/music/playlists/${id}/`, playlistData)
   }
 
   partialUpdatePlaylist(id: string, playlistData: any) {
-    return this.patch(`/music/playlists/${id}/`, playlistData)
+    return this.patch(`/api/v1/music/playlists/${id}/`, playlistData)
   }
 
   deletePlaylist(id: string) {
-    return this.delete(`/music/playlists/${id}/`)
+    return this.delete(`/api/v1/music/playlists/${id}/`)
   }
 
   addSongToPlaylist(id: string, songId: string) {
-    return this.post(`/music/playlists/${id}/add_song/`, { song_id: songId })
+    return this.post(`/api/v1/music/playlists/${id}/add_song/`, { song_id: songId })
   }
 
   followPlaylist(id: string) {
-    return this.post(`/music/playlists/${id}/follow/`)
+    return this.post(`/api/v1/music/playlists/${id}/follow/`)
   }
 
   removeSongFromPlaylist(id: string, songId: string) {
-    return this.post(`/music/playlists/${id}/remove_song/`, { song_id: songId })
+    return this.post(`/api/v1/music/playlists/${id}/remove_song/`, { song_id: songId })
   }
 
   unfollowPlaylist(id: string) {
-    return this.post(`/music/playlists/${id}/unfollow/`)
+    return this.post(`/api/v1/music/playlists/${id}/unfollow/`)
   }
 
   // Public endpoints
   getPublicFeatures() {
-    return this.get("/music/public/features/")
+    return this.get("/api/v1/music/public/features/")
   }
 
   getPublicPlaylists() {
-    return this.get("/music/public/playlists/")
+    return this.get("/api/v1/music/public/playlists/")
   }
 
   publicSearch(query: string) {
-    return this.get(`/music/public/search/`, { q: query })
+    return this.get(`/api/v1/music/public/search/`, { q: query })
   }
 
   // Ratings
   getRatings() {
-    return this.get("/music/ratings/")
+    return this.get("/api/v1/music/ratings/")
   }
 
   createRating(ratingData: any) {
-    return this.post("/music/ratings/", ratingData)
+    return this.post("/api/v1/music/ratings/", ratingData)
   }
 
   getRating(id: string) {
-    return this.get(`/music/ratings/${id}/`)
+    return this.get(`/api/v1/music/ratings/${id}/`)
   }
 
   updateRating(id: string, ratingData: any) {
-    return this.put(`/music/ratings/${id}/`, ratingData)
+    return this.put(`/api/v1/music/ratings/${id}/`, ratingData)
   }
 
   partialUpdateRating(id: string, ratingData: any) {
-    return this.patch(`/music/ratings/${id}/`, ratingData)
+    return this.patch(`/api/v1/music/ratings/${id}/`, ratingData)
   }
 
   deleteRating(id: string) {
-    return this.delete(`/music/ratings/${id}/`)
+    return this.delete(`/api/v1/music/ratings/${id}/`)
   }
 
   // Recommended
   getRecommended() {
-    return this.get("/music/recommended/")
+    return this.get("/api/v1/music/recommended/")
   }
 
   // Search
   search(query: string) {
-    return this.get(`/music/search/`, { q: query })
+    return this.get(`/api/v1/music/search/`, { q: query })
   }
 
   // Songs
   getSongs() {
-    return this.get("/music/songs/")
+    return this.get("/api/v1/music/songs/")
   }
 
   createSong(songData: any) {
-    return this.post("/music/songs/", songData)
+    return this.post("/api/v1/music/songs/", songData)
   }
 
   getSong(id: string) {
-    return this.get(`/music/songs/${id}/`)
+    return this.get(`/api/v1/music/songs/${id}/`)
   }
 
   updateSong(id: string, songData: any) {
-    return this.put(`/music/songs/${id}/`, songData)
+    return this.put(`/api/v1/music/songs/${id}/`, songData)
   }
 
   partialUpdateSong(id: string, songData: any) {
-    return this.patch(`/music/songs/${id}/`, songData)
+    return this.patch(`/api/v1/music/songs/${id}/`, songData)
   }
 
   deleteSong(id: string) {
-    return this.delete(`/music/songs/${id}/`)
+    return this.delete(`/api/v1/music/songs/${id}/`)
   }
 
   likeSong(id: string) {
-    return this.post(`/music/songs/${id}/like/`)
+    return this.post(`/api/v1/music/songs/${id}/like/`)
   }
 
   playSong(id: string) {
-    return this.post(`/music/songs/${id}/play/`)
+    return this.post(`/api/v1/music/songs/${id}/play/`)
   }
 
   getRecommendedSongs() {
-    return this.get("/music/songs/recommended/")
+    return this.get("/api/v1/music/songs/recommended/")
   }
 
   searchSongs(query: string) {
-    return this.get(`/music/songs/search/`, { q: query })
+    return this.get(`/api/v1/music/songs/search/`, { q: query })
   }
 
   getTrendingSongs() {
-    return this.get("/music/songs/trending/")
+    return this.get("/api/v1/music/songs/trending/")
   }
 
   // Trending
   getTrending() {
-    return this.get("/music/trending/")
+    return this.get("/api/v1/music/trending/")
   }
 
   // Upload
   uploadMusic(formData: FormData) {
-    return this.request("POST", "/music/upload/", formData)
+    return this.request("POST", "/api/v1/music/", formData)
   }
 }
 

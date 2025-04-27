@@ -7,11 +7,25 @@ import { AuthProvider } from "@/context/auth-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Spotify Clone",
+  title: {
+    template: '%s | Spotify Clone',
+    default: 'Spotify Clone',
+  },
   description: "A professional music streaming interface",
-    generator: 'v0.dev'
-}
-
+  generator: 'v0.dev',
+  icons: [
+    {
+      rel: 'icon',
+      url: '/spotify-logo.png', // Đường dẫn đến file icon của bạn trong thư mục public
+    },
+    // Bạn có thể thêm các icon khác nhau cho các mục đích khác nhau
+    // {
+    //   rel: 'apple-touch-icon',
+    //   url: '/apple-icon.png',
+    //   sizes: '180x180',
+    // },
+  ],
+};
 export default function RootLayout({
   children,
 }: {
