@@ -11,9 +11,11 @@ import { Button } from "@/components/ui/button"
 export default function HomePage() {
   const { user } = useAuth()
   const router = useRouter()
+  console.log(process.env.NEXT_PUBLIC_API_URL)
 
   // If user is logged in, redirect to the music app
   useEffect(() => {
+
     if (user) {
       router.push("/dashboard")
     }

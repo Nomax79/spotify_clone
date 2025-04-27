@@ -11,7 +11,14 @@ type AuthContextType = {
   isAdmin: boolean
   login: (email: string, password: string) => Promise<void>
   loginWithProvider: (provider: string) => Promise<void>
-  register: (userData: { email: string; username?: string; password?: string }) => Promise<void>
+  register: (userData: {
+    email: string;
+    username?: string;
+    password?: string;
+    first_name?: string;
+    last_name?: string;
+    bio?: string;
+  }) => Promise<void>
   logout: () => void
 }
 
@@ -61,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("spotify_user", JSON.stringify(userData))
 
       // Redirect to admin or dashboard based on is_staff property
-      if (userData.is_admin=== true) {
+      if (userData.is_admin === true) {
         router.push("/admin")
       } else {
         router.push("/dashboard")
@@ -147,7 +154,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const register = async (userData: { email: string; username?: string; password?: string }) => {
+  const register = async (userData: {
+    email: string;
+    username?: string;
+    password?: string;
+    first_name?: string;
+    last_name?: string;
+    bio?: string;
+  }) => {
     setIsLoading(true)
     try {
       // Call the register API
@@ -170,8 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("spotify_user")
     router.push("/")
   }
-  
-  const isAdmin = user?.is_admin=== true
+
+  const isAdmin = user?.is_admin === true
   return (
     <AuthContext.Provider value={{ user, isLoading, isAdmin, login, loginWithProvider, register, logout }}>
       {children}

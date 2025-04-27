@@ -7,31 +7,90 @@ import { useAuth } from "@/context/auth-context"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "@/components/ui/form"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Eye, EyeOff } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+
+// Define login schema validation with Zod
+const loginSchema = z.object({
+  email: z.string()
+    .min(1, "Email là bắt buộc")
+    .email("Email không hợp lệ"),
+  password: z.string()
+    .min(1, "Mật khẩu là bắt buộc"),
+});
+
+// Define type from schema
+type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const { login, loginWithProvider, isLoading } = useAuth()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const { toast } = useToast()
+  const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Initialize React Hook Form with Zod resolver
+  const form = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    }
+  });
+
+  const onSubmit = async (data: LoginForm) => {
     setError("")
-
-    if (!email) {
-      setError("Vui lòng nhập email hoặc tên người dùng")
-      return
-    }
-
-    if (!password) {
-      setError("Vui lòng nhập mật khẩu")
-      return
-    }
-
     try {
-      await login(email, password)
-    } catch (err) {
-      setError("Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập của bạn.")
+      // Use login function directly, isLoading is handled in the login function of auth context
+      await login(data.email, data.password)
+
+      toast({
+        title: "Đăng nhập thành công!",
+        description: "Bạn sẽ được chuyển đến trang chủ.",
+        variant: "default",
+      })
+
+      // Redirect to home page after 1 second
+      setTimeout(() => {
+        router.push("/")
+      }, 1000)
+    } catch (err: any) {
+      // Handle API errors
+      if (err.message && err.message.includes("Invalid credentials")) {
+        setError("Email hoặc mật khẩu không đúng")
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Email hoặc mật khẩu không đúng",
+          variant: "destructive",
+        })
+      } else if (err.message && err.message.includes("User not found")) {
+        setError("Tài khoản không tồn tại")
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Tài khoản không tồn tại",
+          variant: "destructive",
+        })
+      } else {
+        console.error("Login error:", err)
+        setError("Đăng nhập thất bại. Vui lòng thử lại sau.")
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Có lỗi xảy ra. Vui lòng thử lại sau.",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -93,53 +152,87 @@ export default function LoginPage() {
 
         <div className="border-t border-white/10 pt-6 mb-6"></div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
-              Email hoặc tên người dùng
-            </label>
-            <Input
-              id="email"
-              type="text"
-              placeholder="Email hoặc tên người dùng"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-zinc-800 border-zinc-700 text-white"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium mb-2">
+                Email hoặc tên người dùng
+              </label>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        id="email"
+                        type="text"
+                        placeholder="Email hoặc tên người dùng"
+                        {...field}
+                        className="bg-zinc-800 border-zinc-700 text-white"
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium mb-2">
+                Mật khẩu
+              </label>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Mật khẩu"
+                          {...field}
+                          className="bg-zinc-800 border-zinc-700 text-white"
+                          disabled={isLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setShowPassword(!showPassword)
+                          }}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/50"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {error && <div className="text-red-500 text-sm">{error}</div>}
+
+            <Button
+              type="submit"
+              className="w-full bg-green-500 hover:bg-green-600 text-black font-bold"
               disabled={isLoading}
-            />
-          </div>
+            >
+              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
+            </Button>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-2">
-              Mật khẩu
-            </label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Mật khẩu"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-zinc-800 border-zinc-700 text-white"
-              disabled={isLoading}
-            />
-          </div>
-
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-
-          <Button
-            type="submit"
-            className="w-full bg-green-500 hover:bg-green-600 text-black font-bold"
-            disabled={isLoading}
-          >
-            {isLoading ? "Đang xử lý..." : "Đăng nhập"}
-          </Button>
-
-          <div className="text-center">
-            <Link href="/forgot-password" className="text-white/70 hover:underline text-sm">
-              Quên mật khẩu?
-            </Link>
-          </div>
-        </form>
+            <div className="text-center">
+              <Link href="/forgot-password" className="text-white/70 hover:underline text-sm">
+                Quên mật khẩu?
+              </Link>
+            </div>
+          </form>
+        </Form>
 
         <div className="border-t border-white/10 pt-6 mt-6 text-center">
           <p className="text-white/70 mb-4">

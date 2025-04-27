@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Music, Disc, ListMusic, Settings, ChevronLeft, ChevronRight } from "lucide-react"
+import { LayoutDashboard, Users, Music, Disc, ListMusic, Settings, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -17,6 +17,7 @@ export default function AdminSidebar() {
     { id: "songs", label: "Bài hát", icon: Music, href: "/admin/songs" },
     { id: "albums", label: "Album", icon: Disc, href: "/admin/albums" },
     { id: "playlists", label: "Playlist", icon: ListMusic, href: "/admin/playlists" },
+    { id: "error-codes", label: "Mã lỗi", icon: AlertCircle, href: "/admin/error-codes" },
     { id: "settings", label: "Cài đặt", icon: Settings, href: "/admin/settings" },
   ]
 
