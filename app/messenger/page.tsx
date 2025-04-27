@@ -21,7 +21,7 @@ import {
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { chatApi, accountsApi } from "@/lib/api"
+import postmainApi from "@/lib/api/postman"
 import type { Conversation, Message, PublicUser, Song } from "@/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -69,12 +69,12 @@ export default function MessengerPage() {
         setIsLoading(true)
 
         // Fetch conversations
-        const conversationsData = (await chatApi.getConversations()) as Conversation[]
+        const conversationsData = (await postmainApi.chat.getConversations()) as Conversation[]
         const conversationsList = conversationsData.length > 0 ? conversationsData : mockConversations
         setConversations(conversationsList)
 
         // Fetch all available users
-        const usersData = await accountsApi.getPublicUsers()
+        const usersData = await postmainApi.accounts.getPublicUsers()
         const usersList = usersData.length > 0 ? usersData : mockContacts
 
         // Filter out the current user
@@ -83,7 +83,7 @@ export default function MessengerPage() {
 
         // Fetch followed users
         try {
-          const userData = await accountsApi.getCurrentUser()
+          const userData = await postmainApi.accounts.getCurrentUser()
           setFollowedUsers(userData.following || [])
         } catch (error) {
           console.error("Error fetching followed users:", error)
@@ -124,7 +124,7 @@ export default function MessengerPage() {
 
       try {
         // In a real app, you would fetch messages for the specific conversation
-        const messagesData = (await chatApi.getMessages()) as any[]
+        const messagesData = (await postmainApi.chat.getMessages()) as any[]
 
         // Filter messages for the selected conversation
         const filteredMessages = messagesData.filter(
@@ -369,7 +369,7 @@ export default function MessengerPage() {
       }
 
       // In a real app, you would send the message to the API
-      const sentMessage = await chatApi.createMessage(messageData)
+      const sentMessage = await postmainApi.chat.createMessage(messageData)
 
       // Update the messages list
       setMessages([...displayMessages, sentMessage as Message])
@@ -407,7 +407,7 @@ export default function MessengerPage() {
       }
 
       // In a real app, you would send the message to the API
-      const sentMessage = (await chatApi.createMessage(messageData)) as any
+      const sentMessage = (await postmainApi.chat.createMessage(messageData)) as any
 
       // Update the messages list
       setMessages([
@@ -446,7 +446,7 @@ export default function MessengerPage() {
     setFollowLoading(userId)
     try {
       // Call API to follow user
-      await accountsApi.followUser(userId)
+      await postmainApi.accounts.followUser(userId)
 
       // Update followed users list
       setFollowedUsers([...followedUsers, userId])

@@ -139,43 +139,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       }, 500)
-
-      // Trong trường hợp không có API thực tế, chúng ta sẽ giả lập đăng nhập thành công
-      if (process.env.NODE_ENV === "development" && !process.env.NEXT_PUBLIC_API_URL) {
-        setTimeout(() => {
-          // Giả lập dữ liệu người dùng
-          const mockUser = {
-            id: `${provider.toLowerCase()}_user_123`,
-            username: `${provider.toLowerCase()}_user`,
-            email: `user@${provider.toLowerCase()}.com`,
-            first_name: "Test",
-            last_name: "User",
-            profile_image: `/placeholder.svg?height=200&width=200&text=${provider.charAt(0)}`,
-            is_staff: false,
-            is_active: true,
-          }
-
-          // Lưu token giả
-          localStorage.setItem("spotify_token", "mock_token_123")
-          localStorage.setItem("spotify_refresh_token", "mock_refresh_token_123")
-          localStorage.setItem("spotify_user", JSON.stringify(mockUser))
-
-          // Cập nhật trạng thái
-          setUser(mockUser)
-
-          // Chuyển hướng dựa trên vai trò
-          if (mockUser.is_staff) {
-            router.push("/admin")
-          } else {
-            router.push("/dashboard")
-          }
-
-          // Đóng cửa sổ popup giả lập
-          if (authWindow) {
-            authWindow.close()
-          }
-        }, 2000)
-      }
     } catch (error) {
       console.error(`Đăng nhập với ${provider} thất bại:`, error)
       throw error
