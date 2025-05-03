@@ -4,10 +4,11 @@
  */
 
 // Cấu hình API
-const API_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_API_URL || "",
+export const API_CONFIG = {
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || "https://spotifybackend.shop",
   defaultHeaders: {
     "Content-Type": "application/json",
+    Accept: "application/json",
   },
 };
 
@@ -118,7 +119,25 @@ class ApiRequest {
 
       // Kiểm tra response status
       if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        // Thêm response vào error để xử lý ở phía trên
+        const error: any = new Error(
+          `API error: ${response.status} ${response.statusText}`
+        );
+        error.response = response;
+        error.status = response.status;
+
+        // Cố gắng parse body nếu có
+        try {
+          const errorData = await response.json();
+          error.data = errorData;
+          if (errorData.detail) {
+            error.message = errorData.detail;
+          }
+        } catch (e) {
+          // Nếu không parse được JSON, giữ nguyên message lỗi
+        }
+
+        throw error;
       }
 
       // Parse JSON response
@@ -178,10 +197,57 @@ class ApiRequest {
   }
 }
 
+// Thêm hàm xử lý response có nội dung là media
+const handleMediaResponse = async (response: Response) => {
+  // Kiểm tra status code
+  if (!response.ok) {
+    if (response.status === 404) {
+      console.error("Media not found:", response.url);
+      throw new Error("Media not found");
+    }
+    const errorText = await response.text();
+    console.error("Error fetching media:", errorText);
+    throw new Error(
+      `Error fetching media: ${response.status} ${response.statusText}`
+    );
+  }
+
+  // Kiểm tra Content-Type
+  const contentType = response.headers.get("Content-Type");
+  if (contentType) {
+    console.log("Media content type:", contentType);
+  }
+
+  return response;
+};
+
+// Thêm headers CORS và Accept cho media requests
+const getMediaRequestHeaders = () => {
+  return {
+    Accept: "audio/*, video/*, image/*",
+    "Access-Control-Allow-Origin": "*",
+  };
+};
+
 // Collection cho Auth API
 export class AuthCollection extends ApiRequest {
-  login(email: string, password: string): Promise<LoginResponse> {
-    return this.post<LoginResponse>("/api/v1/auth/token/", { email, password });
+  async login(email: string, password: string): Promise<LoginResponse> {
+    try {
+      return await this.post<LoginResponse>("/api/v1/auth/token/", {
+        email,
+        password,
+      });
+    } catch (error: any) {
+      // Xử lý cụ thể lỗi đăng nhập
+      if (error.status === 401) {
+        const err = new Error(
+          "No active account found with the given credentials"
+        );
+        err.name = "AuthenticationError";
+        throw err;
+      }
+      throw error;
+    }
   }
 
   // Ghi đè refreshToken (không bắt buộc vì đã có ở lớp cha, nhưng có thể để tùy chỉnh)
@@ -301,199 +367,112 @@ export class ChatCollection extends ApiRequest {
 
 // Collection cho Music API
 export class MusicCollection extends ApiRequest {
-  // Albums
-  getAlbums() {
-    return this.get("/api/v1/music/albums/");
-  }
+  // Playlist - theo tài liệu mới
 
-  createAlbum(albumData: any) {
-    return this.post("/api/v1/music/albums/", albumData);
-  }
-
-  getAlbum(id: string) {
-    return this.get(`/api/v1/music/albums/${id}/`);
-  }
-
-  updateAlbum(id: string, albumData: any) {
-    return this.put(`/api/v1/music/albums/${id}/`, albumData);
-  }
-
-  partialUpdateAlbum(id: string, albumData: any) {
-    return this.patch(`/api/v1/music/albums/${id}/`, albumData);
-  }
-
-  deleteAlbum(id: string) {
-    return this.delete(`/api/v1/music/albums/${id}/`);
-  }
-
-  getAlbumSongs(id: string) {
-    return this.get(`/api/v1/music/albums/${id}/songs/`);
-  }
-
-  // Comments
-  getComments() {
-    return this.get("/api/v1/music/comments/");
-  }
-
-  createComment(commentData: any) {
-    return this.post("/api/v1/music/comments/", commentData);
-  }
-
-  getComment(id: string) {
-    return this.get(`/api/v1/music/comments/${id}/`);
-  }
-
-  updateComment(id: string, commentData: any) {
-    return this.put(`/api/v1/music/comments/${id}/`, commentData);
-  }
-
-  partialUpdateComment(id: string, commentData: any) {
-    return this.patch(`/api/v1/music/comments/${id}/`, commentData);
-  }
-
-  deleteComment(id: string) {
-    return this.delete(`/api/v1/music/comments/${id}/`);
-  }
-
-  // Features
-  getBasicFeatures() {
-    return this.get("/api/v1/music/features/basic/");
-  }
-
-  // Genres
-  getGenres() {
-    return this.get("/api/v1/music/genres/");
-  }
-
-  createGenre(genreData: any) {
-    return this.post("/api/v1/music/genres/", genreData);
-  }
-
-  getGenre(id: string) {
-    return this.get(`/api/v1/music/genres/${id}/`);
-  }
-
-  updateGenre(id: string, genreData: any) {
-    return this.put(`/api/v1/music/genres/${id}/`, genreData);
-  }
-
-  partialUpdateGenre(id: string, genreData: any) {
-    return this.patch(`/api/v1/music/genres/${id}/`, genreData);
-  }
-
-  deleteGenre(id: string) {
-    return this.delete(`/api/v1/music/genres/${id}/`);
-  }
-
-  getGenreSongs(id: string) {
-    return this.get(`/api/v1/music/genres/${id}/songs/`);
-  }
-
-  // Library
-  getLibrary() {
-    return this.get("/api/v1/music/library/");
-  }
-
-  // Playlists
+  // Lấy danh sách playlist
   getPlaylists() {
     return this.get("/api/v1/music/playlists/");
   }
 
-  createPlaylist(playlistData: any) {
-    return this.post("/api/v1/music/playlists/", playlistData);
-  }
-
+  // Lấy playlist theo ID
   getPlaylist(id: string) {
     return this.get(`/api/v1/music/playlists/${id}/`);
   }
 
+  // Lấy playlist nổi bật
+  getFeaturedPlaylists() {
+    return this.get("/api/v1/music/playlists/featured/");
+  }
+
+  // Tạo playlist mới
+  createPlaylist(playlistData: any) {
+    return this.post("/api/v1/music/playlists/", playlistData);
+  }
+
+  // Cập nhật thông tin playlist
   updatePlaylist(id: string, playlistData: any) {
     return this.put(`/api/v1/music/playlists/${id}/`, playlistData);
   }
 
-  partialUpdatePlaylist(id: string, playlistData: any) {
-    return this.patch(`/api/v1/music/playlists/${id}/`, playlistData);
-  }
-
+  // Xóa playlist
   deletePlaylist(id: string) {
     return this.delete(`/api/v1/music/playlists/${id}/`);
   }
 
-  addSongToPlaylist(id: string, songId: string) {
-    return this.post(`/api/v1/music/playlists/${id}/add_song/`, {
+  // Thêm bài hát vào playlist
+  addPlaylistSong(playlistId: string, songId: string) {
+    return this.post(`/api/v1/music/playlists/${playlistId}/add_song/`, {
       song_id: songId,
     });
   }
 
+  // Xóa bài hát khỏi playlist
+  removePlaylistSong(playlistId: string, songId: string) {
+    return this.post(`/api/v1/music/playlists/${playlistId}/remove_song/`, {
+      song_id: songId,
+    });
+  }
+
+  // Cập nhật ảnh bìa playlist
+  updatePlaylistCover(playlistId: string, formData: FormData) {
+    return this.request<any>(
+      "POST",
+      `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+      formData,
+      {
+        "Content-Type": "multipart/form-data",
+      }
+    );
+  }
+
+  // Cập nhật ảnh bìa playlist từ bài hát
+  updatePlaylistCoverFromSong(playlistId: string, songId: string) {
+    return this.post(
+      `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+      { song_id: songId }
+    );
+  }
+
+  // Chuyển đổi chế độ công khai/riêng tư
+  togglePlaylistPrivacy(id: string) {
+    return this.post(`/api/v1/music/playlists/${id}/toggle_privacy/`);
+  }
+
+  // Theo dõi playlist
   followPlaylist(id: string) {
     return this.post(`/api/v1/music/playlists/${id}/follow/`);
   }
 
-  removeSongFromPlaylist(id: string, songId: string) {
-    return this.post(`/api/v1/music/playlists/${id}/remove_song/`, {
-      song_id: songId,
-    });
-  }
-
+  // Bỏ theo dõi playlist
   unfollowPlaylist(id: string) {
     return this.post(`/api/v1/music/playlists/${id}/unfollow/`);
   }
 
-  // Public endpoints
-  getPublicFeatures() {
-    return this.get("/api/v1/music/public/features/");
+  // Kiểm tra trạng thái theo dõi playlist
+  checkFollowingPlaylist(id: string) {
+    return this.get(`/api/v1/music/playlists/${id}/check_following/`);
   }
 
-  getPublicPlaylists() {
-    return this.get("/api/v1/music/public/playlists/");
+  // Lấy danh sách người theo dõi playlist
+  getPlaylistFollowers(id: string) {
+    return this.get(`/api/v1/music/playlists/${id}/followers/`);
   }
 
-  publicSearch(query: string) {
-    return this.get(`/api/v1/music/public/search/`, { q: query });
+  // Chia sẻ playlist
+  sharePlaylist(id: string, receiverId: string, content: string) {
+    return this.post(`/api/v1/music/share/playlist/${id}/`, {
+      receiver_id: receiverId,
+      content,
+    });
   }
 
-  // Ratings
-  getRatings() {
-    return this.get("/api/v1/music/ratings/");
+  // Song - theo tài liệu mới
+  uploadSong(formData: FormData) {
+    return this.post("/api/v1/music/upload/", formData);
   }
 
-  createRating(ratingData: any) {
-    return this.post("/api/v1/music/ratings/", ratingData);
-  }
-
-  getRating(id: string) {
-    return this.get(`/api/v1/music/ratings/${id}/`);
-  }
-
-  updateRating(id: string, ratingData: any) {
-    return this.put(`/api/v1/music/ratings/${id}/`, ratingData);
-  }
-
-  partialUpdateRating(id: string, ratingData: any) {
-    return this.patch(`/api/v1/music/ratings/${id}/`, ratingData);
-  }
-
-  deleteRating(id: string) {
-    return this.delete(`/api/v1/music/ratings/${id}/`);
-  }
-
-  // Recommended
-  getRecommended() {
-    return this.get("/api/v1/music/recommended/");
-  }
-
-  // Search
-  search(query: string) {
-    return this.get(`/api/v1/music/search/`, { q: query });
-  }
-
-  // Songs
   getSongs() {
     return this.get("/api/v1/music/songs/");
-  }
-
-  createSong(songData: any) {
-    return this.post("/api/v1/music/songs/", songData);
   }
 
   getSong(id: string) {
@@ -504,42 +483,120 @@ export class MusicCollection extends ApiRequest {
     return this.put(`/api/v1/music/songs/${id}/`, songData);
   }
 
-  partialUpdateSong(id: string, songData: any) {
-    return this.patch(`/api/v1/music/songs/${id}/`, songData);
-  }
-
   deleteSong(id: string) {
     return this.delete(`/api/v1/music/songs/${id}/`);
-  }
-
-  likeSong(id: string) {
-    return this.post(`/api/v1/music/songs/${id}/like/`);
   }
 
   playSong(id: string) {
     return this.post(`/api/v1/music/songs/${id}/play/`);
   }
 
+  likeSong(id: string) {
+    return this.post(`/api/v1/music/songs/${id}/like/`);
+  }
+
+  rateSong(id: string, rating: number) {
+    return this.post(`/api/v1/music/songs/${id}/rate/`, { rating });
+  }
+
+  commentSong(id: string, comment: string) {
+    return this.post(`/api/v1/music/songs/${id}/comment/`, { comment });
+  }
+
+  getSyncedLyrics(songId: string) {
+    return this.get(`/api/v1/music/songs/${songId}/lyrics/synced/`);
+  }
+
+  addSyncedLyrics(
+    songId: string,
+    lyrics: Array<{ time: number; text: string }>
+  ) {
+    return this.post(`/api/v1/music/songs/${songId}/lyrics/synced/`, {
+      synced_lyrics: lyrics,
+    });
+  }
+
+  // Thư viện và Tìm kiếm - theo tài liệu mới
+  getUserLibrary() {
+    return this.get("/api/v1/music/library/");
+  }
+
+  search(query: string) {
+    return this.get(`/api/v1/music/search/`, { q: query });
+  }
+
+  getSearchHistory() {
+    return this.get("/api/v1/music/search-history/");
+  }
+
+  clearSearchHistory() {
+    return this.delete("/api/v1/music/search-history/");
+  }
+
+  // Đề xuất và Xu hướng - theo tài liệu mới
+  getSongRecommendations() {
+    return this.get("/api/v1/music/recommendations/songs/");
+  }
+
+  getLikedBasedRecommendations() {
+    return this.get("/api/v1/music/recommendations/liked/");
+  }
+
+  getYouMayLike() {
+    return this.get("/api/v1/music/recommendations/may-like/");
+  }
+  getRecommended() {
+    return this.get("/api/v1/music/recommendations/");
+  }
+
   getRecommendedSongs() {
-    return this.get("/api/v1/music/songs/recommended/");
+    return this.get("/api/v1/music/recommendations/songs/");
   }
 
-  searchSongs(query: string) {
-    return this.get(`/api/v1/music/songs/search/`, { q: query });
+  // Quản lý queue và player - theo tài liệu mới
+  getQueue() {
+    return this.get("/api/v1/music/queue/");
   }
 
+  addToQueue(songId: string) {
+    return this.post("/api/v1/music/queue/add/", { song_id: songId });
+  }
+
+  removeFromQueue(position: number) {
+    return this.delete(`/api/v1/music/queue/remove/${position}/`);
+  }
+
+  clearQueue() {
+    return this.delete("/api/v1/music/queue/clear/");
+  }
+
+  // Các phương thức tiện ích bổ sung
   getTrendingSongs() {
     return this.get("/api/v1/music/songs/trending/");
   }
 
-  // Trending
-  getTrending() {
-    return this.get("/api/v1/music/trending/");
+  getPersonalTrends() {
+    return this.get("/api/v1/music/trends/personal/");
   }
 
-  // Upload
-  uploadMusic(formData: FormData) {
-    return this.request("POST", "/api/v1/music/", formData);
+  getArtists(params?: { page?: number; limit?: number }) {
+    return this.get("/api/v1/music/artists/", params);
+  }
+
+  getArtist(id: string) {
+    return this.get(`/api/v1/music/artists/${id}/`);
+  }
+
+  getAlbums() {
+    return this.get("/api/v1/music/albums/");
+  }
+
+  getAlbum(id: string) {
+    return this.get(`/api/v1/music/albums/${id}/`);
+  }
+
+  getGenres() {
+    return this.get("/api/v1/music/genres/");
   }
 }
 

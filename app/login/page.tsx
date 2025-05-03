@@ -18,9 +18,10 @@ import {
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { AuthErrorAlert } from "@/components/ui/AuthErrorAlert"
 
 // Define login schema validation with Zod
 const loginSchema = z.object({
@@ -67,12 +68,20 @@ export default function LoginPage() {
         router.push("/")
       }, 1000)
     } catch (err: any) {
+      console.error("Login error:", err)
       // Handle API errors
-      if (err.message && err.message.includes("Invalid credentials")) {
+      if (err.response && err.response.status === 401) {
         setError("Email hoặc mật khẩu không đúng")
         toast({
           title: "Đăng nhập thất bại",
           description: "Email hoặc mật khẩu không đúng",
+          variant: "destructive",
+        })
+      } else if (err.message && err.message.includes("No active account found with the given credentials")) {
+        setError("Không tìm thấy tài khoản hoạt động với thông tin đăng nhập này")
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Không tìm thấy tài khoản hoạt động với thông tin đăng nhập này",
           variant: "destructive",
         })
       } else if (err.message && err.message.includes("User not found")) {
@@ -82,8 +91,14 @@ export default function LoginPage() {
           description: "Tài khoản không tồn tại",
           variant: "destructive",
         })
+      } else if (err.message && err.message.includes("Invalid credentials")) {
+        setError("Email hoặc mật khẩu không đúng")
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Email hoặc mật khẩu không đúng",
+          variant: "destructive",
+        })
       } else {
-        console.error("Login error:", err)
         setError("Đăng nhập thất bại. Vui lòng thử lại sau.")
         toast({
           title: "Đăng nhập thất bại",
@@ -95,7 +110,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative">
+      <Link href="/" className="absolute top-4 left-4 text-white flex items-center gap-1 hover:text-green-500 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Quay lại trang chủ
+      </Link>
+
       <div className="w-full max-w-md bg-zinc-900 rounded-lg p-8">
         <div className="flex justify-center mb-8">
           <svg viewBox="0 0 78 24" width="78" height="24" className="text-white">
@@ -216,7 +235,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && <div className="text-red-500 text-sm">{error}</div>}
+            {error && <AuthErrorAlert message={error} onClose={() => setError("")} />}
 
             <Button
               type="submit"
@@ -225,12 +244,6 @@ export default function LoginPage() {
             >
               {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </Button>
-
-            <div className="text-center">
-              <Link href="/forgot-password" className="text-white/70 hover:underline text-sm">
-                Quên mật khẩu?
-              </Link>
-            </div>
           </form>
         </Form>
 

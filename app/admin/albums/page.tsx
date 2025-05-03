@@ -217,14 +217,13 @@ export default function AdminAlbumsPage() {
       const songsToRemove = albumSongs.filter((song) => !selectedSongs.includes(song.id))
       for (const song of songsToRemove) {
         // await musicApi.removeSongFromAlbum(selectedAlbum.id, song.id)
-        console.log(`Removing song ${song.id} from album ${selectedAlbum.id}`)
+
       }
 
       // Add songs that were selected
       const songsToAdd = selectedSongs.filter((songId) => !albumSongs.some((song) => song.id === songId))
       for (const songId of songsToAdd) {
-        // await musicApi.addSongToAlbum(selectedAlbum.id, songId)
-        console.log(`Adding song ${songId} to album ${selectedAlbum.id}`)
+
       }
 
       // Close dialog

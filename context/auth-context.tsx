@@ -73,8 +73,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         router.push("/dashboard")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error)
+
+      // Xử lý chi tiết các lỗi API
+      if (error.response) {
+        // Trường hợp API trả về response với status code
+        const status = error.response.status
+
+        if (status === 401) {
+          throw new Error("No active account found with the given credentials")
+        } else if (status === 404) {
+          throw new Error("User not found")
+        } else if (status === 400) {
+          // Parse lỗi từ API nếu có
+          try {
+            const errorData = await error.response.json()
+            if (errorData && errorData.detail) {
+              throw new Error(errorData.detail)
+            }
+          } catch (parseError) {
+            // Nếu không parse được JSON, trả về lỗi mặc định
+            throw new Error("Invalid credentials")
+          }
+        }
+      }
+
+      // Trường hợp lỗi không xác định hoặc lỗi mạng
       throw error
     } finally {
       setIsLoading(false)

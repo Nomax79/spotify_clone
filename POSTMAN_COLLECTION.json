@@ -1,0 +1,3018 @@
+{
+    "info": {
+        "_postman_id": "8e3d8767-5f2a-4b82-9e11-c8a4f7c3b123",
+        "name": "Spotify Chat API v1",
+        "description": "Collection cho API mới của Spotify Chat với cấu trúc URL cải tiến",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Authentication",
+            "description": "Các endpoint xác thực người dùng",
+            "item": [
+                {
+                    "name": "Login - Admin",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/token/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "token",
+                                ""
+                            ]
+                        },
+                        "description": "Đăng nhập với tài khoản admin"
+                    },
+                    "response": [
+                        {
+                            "name": "Login Success - Admin",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}"
+                                },
+                                "url": "{{base_url}}/api/v1/auth/token/"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n    \"access\": \"your.jwt.token\",\n    \"refresh\": \"your.refresh.token\",\n    \"user\": {\n        \"id\": 1,\n        \"username\": \"admin\",\n        \"email\": \"admin@example.com\",\n        \"first_name\": \"Admin\",\n        \"last_name\": \"User\",\n        \"avatar\": null,\n        \"bio\": \"\",\n        \"is_admin\": true\n    }\n}"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Response has access and refresh tokens\", function () {",
+                                    "    pm.expect(jsonData).to.have.property('access');",
+                                    "    pm.expect(jsonData).to.have.property('refresh');",
+                                    "    pm.expect(jsonData).to.have.property('user');",
+                                    "    pm.expect(jsonData.user).to.have.property('is_admin');",
+                                    "});",
+                                    "if (jsonData.access) {",
+                                    "    pm.environment.set(\"token\", jsonData.access);",
+                                    "}",
+                                    "if (jsonData.refresh) {",
+                                    "    pm.environment.set(\"refresh_token\", jsonData.refresh);",
+                                    "}",
+                                    "if (jsonData.user && jsonData.user.id) {",
+                                    "    pm.environment.set(\"user_id\", jsonData.user.id);",
+                                    "    pm.environment.set(\"is_admin\", jsonData.user.is_admin);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Login - Regular User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"user1@example.com\",\n  \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/token/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "token",
+                                ""
+                            ]
+                        },
+                        "description": "Đăng nhập với tài khoản người dùng thường"
+                    },
+                    "response": [
+                        {
+                            "name": "Login Success - Regular User",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"user1@example.com\",\n  \"password\": \"password123\"\n}"
+                                },
+                                "url": "{{base_url}}/api/v1/auth/token/"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n    \"access\": \"your.jwt.token\",\n    \"refresh\": \"your.refresh.token\",\n    \"user\": {\n        \"id\": 2,\n        \"username\": \"user1\",\n        \"email\": \"user1@example.com\",\n        \"first_name\": \"Regular\",\n        \"last_name\": \"User\",\n        \"avatar\": null,\n        \"bio\": \"\",\n        \"is_admin\": false\n    }\n}"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Response has access and refresh tokens\", function () {",
+                                    "    pm.expect(jsonData).to.have.property('access');",
+                                    "    pm.expect(jsonData).to.have.property('refresh');",
+                                    "    pm.expect(jsonData).to.have.property('user');",
+                                    "    pm.expect(jsonData.user).to.have.property('is_admin');",
+                                    "});",
+                                    "if (jsonData.access) {",
+                                    "    pm.environment.set(\"token\", jsonData.access);",
+                                    "}",
+                                    "if (jsonData.refresh) {",
+                                    "    pm.environment.set(\"refresh_token\", jsonData.refresh);",
+                                    "}",
+                                    "if (jsonData.user && jsonData.user.id) {",
+                                    "    pm.environment.set(\"user_id\", jsonData.user.id);",
+                                    "    pm.environment.set(\"is_admin\", jsonData.user.is_admin);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Refresh Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/token/refresh/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "token",
+                                "refresh",
+                                ""
+                            ]
+                        },
+                        "description": "Làm mới token JWT"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Response has access token\", function () {",
+                                    "    pm.expect(jsonData).to.have.property('access');",
+                                    "});",
+                                    "if (jsonData.access) {",
+                                    "    pm.environment.set(\"token\", jsonData.access);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/logout/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "logout",
+                                ""
+                            ]
+                        },
+                        "description": "Đăng xuất người dùng và vô hiệu hóa token"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"user@example.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/auth/forgot-password/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "auth",
+                                "forgot-password",
+                                ""
+                            ]
+                        },
+                        "description": "Yêu cầu đặt lại mật khẩu và gửi mã xác nhận đến email người dùng"
+                    },
+                    "response": [
+                        {
+                            "name": "Forgot Password Success",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"user@example.com\"\n}"
+                                },
+                                "url": "{{base_url}}/api/v1/accounts/auth/forgot-password/"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n    \"message\": \"Mã xác nhận đã được gửi đến email của bạn.\"\n}"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Response has success message\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('message');",
+                                    "});",
+                                    "// Lưu email để sử dụng cho verify token",
+                                    "let requestData = JSON.parse(pm.request.body.raw);",
+                                    "if (requestData && requestData.email) {",
+                                    "    pm.environment.set(\"reset_email\", requestData.email);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Verify Reset Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{reset_email}}\",\n  \"token\": \"{{reset_token}}\",\n  \"new_password\": \"NewPassword123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/auth/verify-reset-token/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "auth",
+                                "verify-reset-token",
+                                ""
+                            ]
+                        },
+                        "description": "Xác thực mã token và đặt lại mật khẩu mới"
+                    },
+                    "response": [
+                        {
+                            "name": "Verify Reset Token Success",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"{{reset_email}}\",\n  \"token\": \"{{reset_token}}\",\n  \"new_password\": \"NewPassword123\"\n}"
+                                },
+                                "url": "{{base_url}}/api/v1/accounts/auth/verify-reset-token/"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n    \"message\": \"Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.\"\n}"
+                        },
+                        {
+                            "name": "Invalid Token",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"{{reset_email}}\",\n  \"token\": \"000000\",\n  \"new_password\": \"NewPassword123\"\n}"
+                                },
+                                "url": "{{base_url}}/api/v1/accounts/auth/verify-reset-token/"
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n    \"error\": \"Mã xác nhận không hợp lệ.\"\n}"
+                        },
+                        {
+                            "name": "Expired Token",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"{{reset_email}}\",\n  \"token\": \"{{reset_token}}\",\n  \"new_password\": \"NewPassword123\"\n}"
+                                },
+                                "url": "{{base_url}}/api/v1/accounts/auth/verify-reset-token/"
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n    \"error\": \"Mã xác nhận đã hết hạn.\"\n}"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 200 or 400\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+                                    "});",
+                                    "if (pm.response.code === 200) {",
+                                    "    pm.test(\"Response has success message\", function () {",
+                                    "        var jsonData = pm.response.json();",
+                                    "        pm.expect(jsonData).to.have.property('message');",
+                                    "    });",
+                                    "} else if (pm.response.code === 400) {",
+                                    "    pm.test(\"Response has error message\", function () {",
+                                    "        var jsonData = pm.response.json();",
+                                    "        pm.expect(jsonData).to.have.property('error');",
+                                    "    });",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "User Management",
+            "description": "Các endpoint quản lý người dùng",
+            "item": [
+                {
+                    "name": "Registration",
+                    "item": [
+                        {
+                            "name": "Register User",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"securepassword\",\n  \"first_name\": \"New\",\n  \"last_name\": \"User\",\n  \"bio\": \"Music lover\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/accounts/auth/register/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "accounts",
+                                        "auth",
+                                        "register",
+                                        ""
+                                    ]
+                                },
+                                "description": "Đăng ký người dùng mới"
+                            },
+                            "response": [
+                                {
+                                    "name": "Registration Success",
+                                    "originalRequest": {
+                                        "method": "POST",
+                                        "header": [],
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"securepassword\",\n  \"first_name\": \"New\",\n  \"last_name\": \"User\",\n  \"bio\": \"Music lover\"\n}"
+                                        },
+                                        "url": "{{base_url}}/api/v1/accounts/auth/register/"
+                                    },
+                                    "status": "Created",
+                                    "code": 201,
+                                    "_postman_previewlanguage": "json",
+                                    "header": [
+                                        {
+                                            "key": "Content-Type",
+                                            "value": "application/json"
+                                        }
+                                    ],
+                                    "body": "{\n    \"id\": 3,\n    \"username\": \"newuser\",\n    \"email\": \"newuser@example.com\",\n    \"first_name\": \"New\",\n    \"last_name\": \"User\",\n    \"avatar\": null,\n    \"bio\": \"Music lover\",\n    \"is_admin\": false\n}"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Current User",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/users/me/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "users",
+                                "me",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy thông tin người dùng hiện tại"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Response has user ID\", function () {",
+                                    "    pm.expect(jsonData).to.have.property('id');",
+                                    "});",
+                                    "if (jsonData.id) {",
+                                    "    pm.environment.set(\"user_id\", jsonData.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Public User List",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/public/users/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "public",
+                                "users",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy danh sách người dùng công khai"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Admin",
+            "description": "Các endpoint quản lý dành cho Admin",
+            "item": [
+                {
+                    "name": "List All Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy danh sách tất cả người dùng (Admin only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"securepassword\",\n  \"first_name\": \"New\",\n  \"last_name\": \"User\",\n  \"bio\": \"Created by admin\",\n  \"is_admin\": false,\n  \"is_active\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                ""
+                            ]
+                        },
+                        "description": "Tạo người dùng mới (Admin only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"updateduser\",\n  \"email\": \"updated@example.com\",\n  \"first_name\": \"Updated\",\n  \"last_name\": \"User\",\n  \"bio\": \"Updated by admin\",\n  \"is_active\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/{{target_user_id}}/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                "{{target_user_id}}",
+                                ""
+                            ]
+                        },
+                        "description": "Cập nhật thông tin người dùng (Admin only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/{{target_user_id}}/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                "{{target_user_id}}",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy thông tin chi tiết của người dùng (Admin only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User Complete Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/{{target_user_id}}/complete/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                "{{target_user_id}}",
+                                "complete",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy thông tin hoàn chỉnh của người dùng bao gồm cả dữ liệu liên quan (Admin only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete User",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/{{target_user_id}}/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                "{{target_user_id}}",
+                                ""
+                            ]
+                        },
+                        "description": "Xóa người dùng (Admin only)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Toggle Admin Status",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/{{target_user_id}}/toggle_admin/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                "{{target_user_id}}",
+                                "toggle_admin",
+                                ""
+                            ]
+                        },
+                        "description": "Bật/tắt quyền Admin cho người dùng"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Toggle User Active Status",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/accounts/admin/users/{{target_user_id}}/toggle_active/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "accounts",
+                                "admin",
+                                "users",
+                                "{{target_user_id}}",
+                                "toggle_active",
+                                ""
+                            ]
+                        },
+                        "description": "Bật/tắt trạng thái kích hoạt của người dùng"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Music",
+            "description": "Các endpoint quản lý âm nhạc",
+            "item": [
+                {
+                    "name": "Songs",
+                    "item": [
+                        {
+                            "name": "List Songs",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/songs/?page=1&page_size=10",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "songs",
+                                        ""
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "key": "page_size",
+                                            "value": "10"
+                                        }
+                                    ]
+                                },
+                                "description": "Lấy danh sách bài hát (không cần đăng nhập)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Get Song Details",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/songs/1/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "songs",
+                                        "1",
+                                        ""
+                                    ]
+                                },
+                                "description": "Lấy thông tin chi tiết của bài hát (không cần đăng nhập)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Upload Song",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "formdata",
+                                    "formdata": [
+                                        {
+                                            "key": "title",
+                                            "value": "New Song",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "artist",
+                                            "value": "Artist Name",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "album",
+                                            "value": "Album Name",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "duration",
+                                            "value": "240",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "genre",
+                                            "value": "Pop",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "lyrics",
+                                            "value": "Song lyrics here...",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "audio_file",
+                                            "type": "file",
+                                            "src": ""
+                                        },
+                                        {
+                                            "key": "cover_image",
+                                            "type": "file",
+                                            "src": ""
+                                        }
+                                    ]
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/songs/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "songs",
+                                        ""
+                                    ]
+                                },
+                                "description": "Tải lên bài hát mới (yêu cầu quyền Admin)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Status code is 201\", function () {",
+                                            "    pm.response.to.have.status(201);",
+                                            "});",
+                                            "pm.test(\"Response has song ID\", function () {",
+                                            "    pm.expect(jsonData).to.have.property('id');",
+                                            "});",
+                                            "if (jsonData.id) {",
+                                            "    pm.environment.set(\"song_id\", jsonData.id);",
+                                            "}"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Like Song",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/songs/1/like/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "songs",
+                                        "1",
+                                        "like",
+                                        ""
+                                    ]
+                                },
+                                "description": "Yêu thích bài hát (yêu cầu đăng nhập)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Update Song",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "formdata",
+                                    "formdata": [
+                                        {
+                                            "key": "title",
+                                            "value": "Updated Song Title",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "artist",
+                                            "value": "Updated Artist",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "album",
+                                            "value": "Updated Album",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "genre",
+                                            "value": "Jazz",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "lyrics",
+                                            "value": "Updated lyrics...",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "audio_file",
+                                            "type": "file",
+                                            "src": ""
+                                        },
+                                        {
+                                            "key": "cover_image",
+                                            "type": "file",
+                                            "src": ""
+                                        }
+                                    ]
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/songs/{{song_id}}/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "songs",
+                                        "{{song_id}}",
+                                        ""
+                                    ]
+                                },
+                                "description": "Cập nhật thông tin bài hát (yêu cầu quyền Admin)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Delete Song",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/songs/{{song_id}}/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "songs",
+                                        "{{song_id}}",
+                                        ""
+                                    ]
+                                },
+                                "description": "Xóa bài hát (yêu cầu quyền Admin)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Play Song",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/play/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "play",
+                                        ""
+                                    ]
+                                },
+                                "description": "Truy cập trang phát nhạc (được phép cho mọi người dùng)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Add Synced Lyrics",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"synced_lyrics\": [\n    {\"time\": 0, \"text\": \"Intro music...\"},\n    {\"time\": 10.5, \"text\": \"First verse begins...\"},\n    {\"time\": 25.2, \"text\": \"Chorus begins...\"},\n    {\"time\": 45.7, \"text\": \"Second verse begins...\"}\n  ]\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/songs/{{song_id}}/lyrics/synced/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "songs",
+                                        "{{song_id}}",
+                                        "lyrics",
+                                        "synced",
+                                        ""
+                                    ]
+                                },
+                                "description": "Thêm lời bài hát đồng bộ theo thời gian"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 201\", function () {",
+                                            "    pm.response.to.have.status(201);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Playlists",
+                    "item": [
+                        {
+                            "name": "List Playlists",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/playlists/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "playlists",
+                                        ""
+                                    ]
+                                },
+                                "description": "Lấy danh sách playlist công khai (không cần đăng nhập)"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Get Playlist Details",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/playlists/1/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "playlists",
+                                        "1",
+                                        ""
+                                    ]
+                                },
+                                "description": "Lấy thông tin chi tiết của playlist"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test(\"Status code is 200\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create Playlist",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "formdata",
+                                    "formdata": [
+                                        {
+                                            "key": "name",
+                                            "value": "My Favorite Songs",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "description",
+                                            "value": "A collection of my favorite songs",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "is_public",
+                                            "value": "true",
+                                            "type": "text"
+                                        }
+                                    ]
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/playlists/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "playlists",
+                                        ""
+                                    ]
+                                },
+                                "description": "Tạo playlist mới"
+                            },
+                            "response": [],
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "pm.test(\"Status code is 201\", function () {",
+                                            "    pm.response.to.have.status(201);",
+                                            "});",
+                                            "pm.test(\"Response has playlist ID\", function () {",
+                                            "    pm.expect(jsonData).to.have.property('id');",
+                                            "});",
+                                            "if (jsonData.id) {",
+                                            "    pm.environment.set(\"playlist_id\", jsonData.id);",
+                                            "}"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Albums",
+                            "item": [
+                                {
+                                    "name": "List Albums",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/albums/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "albums",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Lấy danh sách album"
+                                    }
+                                },
+                                {
+                                    "name": "Get Album Details",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/albums/{{album_id}}/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "albums",
+                                                "{{album_id}}",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Lấy thông tin chi tiết của album"
+                                    }
+                                },
+                                {
+                                    "name": "Create Album",
+                                    "request": {
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            }
+                                        ],
+                                        "body": {
+                                            "mode": "formdata",
+                                            "formdata": [
+                                                {
+                                                    "key": "name",
+                                                    "value": "New Album",
+                                                    "type": "text"
+                                                },
+                                                {
+                                                    "key": "artist",
+                                                    "value": "Album Artist",
+                                                    "type": "text"
+                                                },
+                                                {
+                                                    "key": "release_date",
+                                                    "value": "2023-05-15",
+                                                    "type": "text"
+                                                },
+                                                {
+                                                    "key": "cover_image",
+                                                    "type": "file",
+                                                    "src": ""
+                                                }
+                                            ]
+                                        },
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/albums/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "albums",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Tạo album mới (yêu cầu quyền Admin)"
+                                    }
+                                },
+                                {
+                                    "name": "Update Album",
+                                    "request": {
+                                        "method": "PUT",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            }
+                                        ],
+                                        "body": {
+                                            "mode": "formdata",
+                                            "formdata": [
+                                                {
+                                                    "key": "name",
+                                                    "value": "Updated Album Name",
+                                                    "type": "text"
+                                                },
+                                                {
+                                                    "key": "artist",
+                                                    "value": "Updated Artist",
+                                                    "type": "text"
+                                                },
+                                                {
+                                                    "key": "release_date",
+                                                    "value": "2023-06-20",
+                                                    "type": "text"
+                                                },
+                                                {
+                                                    "key": "cover_image",
+                                                    "type": "file",
+                                                    "src": ""
+                                                }
+                                            ]
+                                        },
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/albums/{{album_id}}/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "albums",
+                                                "{{album_id}}",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Cập nhật thông tin album (yêu cầu quyền Admin)"
+                                    }
+                                },
+                                {
+                                    "name": "Delete Album",
+                                    "request": {
+                                        "method": "DELETE",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/albums/{{album_id}}/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "albums",
+                                                "{{album_id}}",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Xóa album (yêu cầu quyền Admin)"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Genres",
+                            "item": [
+                                {
+                                    "name": "List Genres",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/genres/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "genres",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Lấy danh sách thể loại nhạc"
+                                    }
+                                },
+                                {
+                                    "name": "Get Genre Details",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/genres/{{genre_id}}/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "genres",
+                                                "{{genre_id}}",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Lấy thông tin chi tiết của thể loại"
+                                    }
+                                },
+                                {
+                                    "name": "Create Genre",
+                                    "request": {
+                                        "method": "POST",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            },
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n  \"name\": \"Alternative Rock\",\n  \"description\": \"Alternative rock is a category of rock music that emerged from the independent music underground...\"\n}"
+                                        },
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/genres/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "genres",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Tạo thể loại nhạc mới (yêu cầu quyền Admin)"
+                                    }
+                                },
+                                {
+                                    "name": "Update Genre",
+                                    "request": {
+                                        "method": "PUT",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            },
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            }
+                                        ],
+                                        "body": {
+                                            "mode": "raw",
+                                            "raw": "{\n  \"name\": \"Updated Genre Name\",\n  \"description\": \"Updated description for this genre...\"\n}"
+                                        },
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/genres/{{genre_id}}/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "genres",
+                                                "{{genre_id}}",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Cập nhật thông tin thể loại (yêu cầu quyền Admin)"
+                                    }
+                                },
+                                {
+                                    "name": "Delete Genre",
+                                    "request": {
+                                        "method": "DELETE",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/genres/{{genre_id}}/",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "genres",
+                                                "{{genre_id}}",
+                                                ""
+                                            ]
+                                        },
+                                        "description": "Xóa thể loại (yêu cầu quyền Admin)"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Statistics",
+                            "item": [
+                                {
+                                    "name": "Song Play Statistics",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/stats/plays/?period=week",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "stats",
+                                                "plays",
+                                                ""
+                                            ],
+                                            "query": [
+                                                {
+                                                    "key": "period",
+                                                    "value": "week"
+                                                }
+                                            ]
+                                        },
+                                        "description": "Thống kê lượt phát bài hát (period: day, week, month, year)"
+                                    }
+                                },
+                                {
+                                    "name": "Song Like Statistics",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/stats/likes/?period=month",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "stats",
+                                                "likes",
+                                                ""
+                                            ],
+                                            "query": [
+                                                {
+                                                    "key": "period",
+                                                    "value": "month"
+                                                }
+                                            ]
+                                        },
+                                        "description": "Thống kê lượt thích bài hát (period: day, week, month, year)"
+                                    }
+                                },
+                                {
+                                    "name": "Top Songs Report",
+                                    "request": {
+                                        "method": "GET",
+                                        "header": [
+                                            {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{token}}"
+                                            }
+                                        ],
+                                        "url": {
+                                            "raw": "{{base_url}}/api/v1/music/stats/top-songs/?limit=10",
+                                            "host": [
+                                                "{{base_url}}"
+                                            ],
+                                            "path": [
+                                                "api",
+                                                "v1",
+                                                "music",
+                                                "stats",
+                                                "top-songs",
+                                                ""
+                                            ],
+                                            "query": [
+                                                {
+                                                    "key": "limit",
+                                                    "value": "10"
+                                                }
+                                            ]
+                                        },
+                                        "description": "Báo cáo top bài hát được nghe nhiều nhất"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Chat",
+            "description": "Các endpoint quản lý chat",
+            "item": [
+                {
+                    "name": "List Conversations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/chat/conversations/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "chat",
+                                "conversations",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy danh sách cuộc trò chuyện"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Messages",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/chat/conversations/{{recipient_id}}/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "chat",
+                                "conversations",
+                                "{{recipient_id}}",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy tin nhắn với người dùng khác"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Send Message",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"receiver_id\": {{recipient_id}},\n  \"content\": \"Hello, check out this song!\",\n  \"message_type\": \"TEXT\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/chat/messages/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "chat",
+                                "messages",
+                                ""
+                            ]
+                        },
+                        "description": "Gửi tin nhắn mới"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 201\", function () {",
+                                    "    pm.response.to.have.status(201);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Share Song",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"receiver_id\": {{recipient_id}},\n  \"content\": \"Check out this song!\",\n  \"message_type\": \"SONG\",\n  \"shared_song_id\": {{song_id}}\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/chat/messages/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "chat",
+                                "messages",
+                                ""
+                            ]
+                        },
+                        "description": "Chia sẻ bài hát với người dùng khác"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status code is 201\", function () {",
+                                    "    pm.response.to.have.status(201);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Public Music APIs",
+            "description": "Các API âm nhạc có thể truy cập mà không cần xác thực",
+            "item": [
+                {
+                    "name": "Home Page",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/home/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "home",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy dữ liệu trang chủ tổng hợp (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "List Songs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/songs/?page=1&page_size=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "songs",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "page_size",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "Lấy danh sách bài hát (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "Filter Songs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/songs/filter/?genre=Pop&sort=popularity",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "songs",
+                                "filter",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "genre",
+                                    "value": "Pop"
+                                },
+                                {
+                                    "key": "sort",
+                                    "value": "popularity"
+                                }
+                            ]
+                        },
+                        "description": "Lọc bài hát theo nhiều tiêu chí (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "New Albums",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/albums/new/?page=1&page_size=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "albums",
+                                "new",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "page_size",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "Lấy album mới phát hành (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "Featured Playlists",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/playlists/featured/?page=1&page_size=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "playlists",
+                                "featured",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "page_size",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "Lấy playlist được yêu thích nhất (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "Trending Songs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/songs/trending/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "songs",
+                                "trending",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy danh sách bài hát xu hướng (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "Search Music",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/search/?q=example",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "search",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "q",
+                                    "value": "example"
+                                }
+                            ]
+                        },
+                        "description": "Tìm kiếm bài hát, album, playlist (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "Genre Top Songs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/genres/{{genre_id}}/top_songs/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "genres",
+                                "{{genre_id}}",
+                                "top_songs",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy bài hát nổi bật theo thể loại (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "Genre Artists",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/genres/{{genre_id}}/artists/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "genres",
+                                "{{genre_id}}",
+                                "artists",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy danh sách nghệ sĩ nổi bật trong thể loại (không cần đăng nhập)"
+                    }
+                },
+                {
+                    "name": "Album Related",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/albums/{{album_id}}/related/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "albums",
+                                "{{album_id}}",
+                                "related",
+                                ""
+                            ]
+                        },
+                        "description": "Lấy danh sách album liên quan (không cần đăng nhập)"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "User Music Features",
+            "description": "Các tính năng âm nhạc cá nhân hóa cho người dùng đã đăng nhập",
+            "item": [
+                {
+                    "name": "Queue Management",
+                    "item": [
+                        {
+                            "name": "Get Queue",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/queue/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "queue",
+                                        ""
+                                    ]
+                                },
+                                "description": "Xem hàng đợi phát nhạc hiện tại"
+                            }
+                        },
+                        {
+                            "name": "Add to Queue",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"song_id\": {{song_id}}\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/queue/add/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "queue",
+                                        "add",
+                                        ""
+                                    ]
+                                },
+                                "description": "Thêm bài hát vào hàng đợi phát (yêu cầu đăng nhập)"
+                            }
+                        },
+                        {
+                            "name": "Remove from Queue",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/queue/remove/1/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "queue",
+                                        "remove",
+                                        "1",
+                                        ""
+                                    ]
+                                },
+                                "description": "Xóa bài hát khỏi hàng đợi phát (yêu cầu đăng nhập)"
+                            }
+                        },
+                        {
+                            "name": "Clear Queue",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/queue/clear/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "queue",
+                                        "clear",
+                                        ""
+                                    ]
+                                },
+                                "description": "Xóa toàn bộ hàng đợi phát (yêu cầu đăng nhập)"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "User Status",
+                    "item": [
+                        {
+                            "name": "Get Status",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/status/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "status",
+                                        ""
+                                    ]
+                                },
+                                "description": "Xem trạng thái nghe nhạc hiện tại"
+                            }
+                        },
+                        {
+                            "name": "Update Status",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"currently_playing\": {{song_id}},\n  \"status_text\": \"Đang nghe nhạc\",\n  \"is_listening\": true\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/status/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "status",
+                                        ""
+                                    ]
+                                },
+                                "description": "Cập nhật trạng thái nghe nhạc (yêu cầu đăng nhập)"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Personalized Recommendations",
+                    "item": [
+                        {
+                            "name": "Get Recommendations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/recommendations/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "recommendations",
+                                        ""
+                                    ]
+                                },
+                                "description": "Lấy đề xuất bài hát dựa trên lịch sử nghe"
+                            }
+                        },
+                        {
+                            "name": "Liked Based Recommendations",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/recommendations/liked/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "recommendations",
+                                        "liked",
+                                        ""
+                                    ]
+                                },
+                                "description": "Lấy đề xuất bài hát dựa trên bài hát đã thích"
+                            }
+                        },
+                        {
+                            "name": "You May Like",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/recommendations/may-like/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "recommendations",
+                                        "may-like",
+                                        ""
+                                    ]
+                                },
+                                "description": "Lấy gợi ý \"Có thể bạn sẽ thích\""
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "History",
+                    "item": [
+                        {
+                            "name": "Play History",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/history/?page=1&page_size=20",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "history",
+                                        ""
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "key": "page_size",
+                                            "value": "20"
+                                        }
+                                    ]
+                                },
+                                "description": "Xem lịch sử nghe nhạc"
+                            }
+                        },
+                        {
+                            "name": "Search History",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/history/search/?page=1&page_size=20",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "history",
+                                        "search",
+                                        ""
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "key": "page_size",
+                                            "value": "20"
+                                        }
+                                    ]
+                                },
+                                "description": "Xem lịch sử tìm kiếm"
+                            }
+                        },
+                        {
+                            "name": "Clear Search History",
+                            "request": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/history/search/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "history",
+                                        "search",
+                                        ""
+                                    ]
+                                },
+                                "description": "Xóa lịch sử tìm kiếm"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Statistics and Trends",
+                    "item": [
+                        {
+                            "name": "User Statistics",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/statistics/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "statistics",
+                                        ""
+                                    ]
+                                },
+                                "description": "Thống kê thời gian nghe theo thể loại"
+                            }
+                        },
+                        {
+                            "name": "Personal Trends",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/music/trends/personal/",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "music",
+                                        "trends",
+                                        "personal",
+                                        ""
+                                    ]
+                                },
+                                "description": "Xu hướng nghe nhạc cá nhân"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Messaging and Sharing",
+            "description": "Các tính năng tin nhắn và chia sẻ nhạc",
+            "item": [
+                {
+                    "name": "List Messages",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/messages/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "messages",
+                                ""
+                            ]
+                        },
+                        "description": "Xem tin nhắn đã gửi và đã nhận"
+                    }
+                },
+                {
+                    "name": "Send Message",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"receiver_id\": {{recipient_id}},\n  \"content\": \"Xin chào!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/messages/send/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "messages",
+                                "send",
+                                ""
+                            ]
+                        },
+                        "description": "Gửi tin nhắn đến người dùng khác"
+                    }
+                },
+                {
+                    "name": "Share Song",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"receiver_id\": {{recipient_id}},\n  \"content\": \"Bài hát hay nè!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/share/song/{{song_id}}/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "share",
+                                "song",
+                                "{{song_id}}",
+                                ""
+                            ]
+                        },
+                        "description": "Chia sẻ bài hát với người dùng khác"
+                    }
+                },
+                {
+                    "name": "Share Playlist",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"receiver_id\": {{recipient_id}},\n  \"content\": \"Playlist mới của mình!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/music/share/playlist/{{playlist_id}}/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "music",
+                                "share",
+                                "playlist",
+                                "{{playlist_id}}",
+                                ""
+                            ]
+                        },
+                        "description": "Chia sẻ playlist với người dùng khác"
+                    }
+                }
+            ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "refresh_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "user_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "target_user_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "song_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "playlist_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "recipient_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "reset_email",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "reset_token",
+            "value": "",
+            "type": "string"
+        }
+    ]
+}

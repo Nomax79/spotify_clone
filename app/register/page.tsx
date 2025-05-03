@@ -19,7 +19,7 @@ import {
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Eye, EyeOff, ChevronDown, ChevronUp } from "lucide-react"
+import { Eye, EyeOff, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
@@ -126,7 +126,11 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative">
+      <Link href="/" className="absolute top-4 left-4 text-white flex items-center gap-1 hover:text-green-500 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Quay lại trang chủ
+      </Link>
+
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <svg viewBox="0 0 78 24" width="78" height="24" className="text-white">

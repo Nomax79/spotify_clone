@@ -1,25 +1,89 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Home, Search, Plus, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { SongCard, SongType } from "@/components/music/SongCard"
+import { AlbumCard, AlbumType } from "@/components/music/AlbumCard"
+import ArtistCard, { ArtistType } from "@/components/music/ArtistCard"
+import { musicApi } from "@/app/api/music"
+import { usePlayer } from "@/components/player/PlayerContext"
 
 export default function HomePage() {
   const { user } = useAuth()
   const router = useRouter()
-  console.log(process.env.NEXT_PUBLIC_API_URL)
+  const [trendingSongs, setTrendingSongs] = useState<SongType[]>([])
+  const [popularArtists, setPopularArtists] = useState<ArtistType[]>([])
+  const [loading, setLoading] = useState(true)
+  const { play, getDirectMediaUrl } = usePlayer()
 
   // If user is logged in, redirect to the music app
   useEffect(() => {
-
     if (user) {
       router.push("/dashboard")
     }
   }, [user, router])
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        // Lấy danh sách bài hát thịnh hành từ API thật
+        const trendingResponse = await musicApi.getTrendingSongs();
+
+
+        // Chuyển đổi dữ liệu từ API thật sang định dạng của ứng dụng
+        const mappedSongs = trendingResponse.results.map(song => ({
+          id: song.id,
+          title: song.title,
+          artist: {
+            id: song.uploaded_by?.id || 0,
+            name: song.artist,
+            avatar: null
+          },
+          album: {
+            id: 0,
+            title: song.album || "Unknown Album"
+          },
+          duration: song.duration.toString(),
+          play_count: song.play_count,
+          // Sử dụng URL trực tiếp từ API
+          image_url: song.cover_image,
+          file_url: song.audio_file,
+          created_at: song.created_at,
+          updated_at: song.created_at
+        }));
+
+        setTrendingSongs(mappedSongs);
+
+        // Lấy danh sách nghệ sĩ phổ biến
+        const artistsResponse = await musicApi.getArtists({ limit: 6 })
+        setPopularArtists(artistsResponse.data)
+      } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu:", error)
+        // Fallback sang mocked data
+        const songsResponse = await musicApi.getSongs({ limit: 6 })
+        setTrendingSongs(songsResponse.data)
+
+        const artistsResponse = await musicApi.getArtists({ limit: 6 })
+        setPopularArtists(artistsResponse.data)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  const handlePlaySong = (song: SongType) => {
+    // Cho phép phát nhạc mà không cần kiểm tra đăng nhập
+    // PlayerProvider sẽ hiển thị thông báo đăng nhập nếu cần
+    play(song, trendingSongs)
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -97,159 +161,63 @@ export default function HomePage() {
         {/* Main content */}
         <div className="flex-1 bg-gradient-to-b from-zinc-900 to-black p-6 overflow-auto">
           <h2 className="text-2xl font-bold mb-4 flex justify-between items-center">
-            Những bài hát thịnh hành
-            <Button variant="link" className="text-white/70 hover:text-white text-sm">
+            Bài hát thịnh hành trong 7 ngày qua
+            <Link href="/songs" className="text-white/70 hover:text-white text-sm">
               Hiển thị tất cả <ChevronRight className="h-4 w-4" />
-            </Button>
+            </Link>
           </h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            {[
-              { title: "vạn vật như muốn ta bên nhau", artist: "RIO" },
-              { title: "ADAMN", artist: "Bình Gold" },
-              { title: "Như Cách Anh Đã Từng Thôi", artist: "HURRYKNG" },
-              { title: "Jumping Machine (跳跳机)", artist: "LBI利比" },
-              { title: "Phép Màu - Đàn Cá Gỗ Original Soundtrack", artist: "MAYDAYs, Minh Tốc & Lâm" },
-              { title: "Lệ Đường", artist: "Kai Đinh" },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="bg-zinc-800/50 p-4 rounded-lg hover:bg-zinc-800/80 transition cursor-pointer group"
-              >
-                <div className="relative mb-4">
-                  <Image
-                    src={`/placeholder.svg?height=160&width=160&text=${index + 1}`}
-                    width={160}
-                    height={160}
-                    alt={item.title}
-                    className="rounded w-full"
-                  />
-                  <Button
-                    size="icon"
-                    className="absolute bottom-2 right-2 rounded-full bg-green-500 text-black opacity-0 group-hover:opacity-100 transition shadow-lg"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-5 w-5 ml-0.5"
-                    >
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                  </Button>
-                </div>
-                <div className="text-sm font-medium line-clamp-1">{item.title}</div>
-                <div className="text-xs text-white/70 line-clamp-1 mt-1">{item.artist}</div>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="bg-zinc-800/40 rounded-md aspect-square animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {trendingSongs.map((song) => (
+                <SongCard
+                  key={song.id}
+                  song={{
+                    ...song,
+                    // Sử dụng getDirectMediaUrl để xử lý URL trực tiếp
+                    image_url: getDirectMediaUrl(song.image_url),
+                    file_url: getDirectMediaUrl(song.file_url)
+                  }}
+                  onPlay={() => handlePlaySong(song)}
+                  playlist={trendingSongs}
+                />
+              ))}
+            </div>
+          )}
 
-          <h2 className="text-2xl font-bold mb-4 flex justify-between items-center">
+          <h2 className="text-2xl font-bold mb-4 flex justify-between items-center mt-8">
             Nghệ sĩ phổ biến
-            <Button variant="link" className="text-white/70 hover:text-white text-sm">
+            <Link href="/artists" className="text-white/70 hover:text-white text-sm">
               Hiển thị tất cả <ChevronRight className="h-4 w-4" />
-            </Button>
+            </Link>
           </h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            {[
-              { name: "HIEUTHUHAI", type: "Nghệ sĩ" },
-              { name: "Sơn Tùng M-TP", type: "Nghệ sĩ" },
-              { name: "Dương Domic", type: "Nghệ sĩ" },
-              { name: "SOOBIN", type: "Nghệ sĩ" },
-              { name: 'ANH TRAI "SAY HI"', type: "Nghệ sĩ" },
-              { name: "buitruonglinh", type: "Nghệ sĩ" },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="bg-zinc-800/50 p-4 rounded-lg hover:bg-zinc-800/80 transition cursor-pointer group"
-              >
-                <div className="relative mb-4">
-                  <Image
-                    src={`/placeholder.svg?height=160&width=160&text=${item.name.charAt(0)}`}
-                    width={160}
-                    height={160}
-                    alt={item.name}
-                    className="rounded-full w-full"
-                  />
-                  <Button
-                    size="icon"
-                    className="absolute bottom-2 right-2 rounded-full bg-green-500 text-black opacity-0 group-hover:opacity-100 transition shadow-lg"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-5 w-5 ml-0.5"
-                    >
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                  </Button>
-                </div>
-                <div className="text-sm font-medium line-clamp-1">{item.name}</div>
-                <div className="text-xs text-white/70 line-clamp-1 mt-1">{item.type}</div>
-              </div>
-            ))}
-          </div>
-
-          <h2 className="text-2xl font-bold mb-4 flex justify-between items-center">
-            Album và đĩa đơn nổi tiếng
-            <Button variant="link" className="text-white/70 hover:text-white text-sm">
-              Hiển thị tất cả <ChevronRight className="h-4 w-4" />
-            </Button>
-          </h2>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <div
-                key={item}
-                className="bg-zinc-800/50 p-4 rounded-lg hover:bg-zinc-800/80 transition cursor-pointer group"
-              >
-                <div className="relative mb-4">
-                  <Image
-                    src={`/placeholder.svg?height=160&width=160&text=Album ${item}`}
-                    width={160}
-                    height={160}
-                    alt={`Album ${item}`}
-                    className="rounded w-full"
-                  />
-                  <Button
-                    size="icon"
-                    className="absolute bottom-2 right-2 rounded-full bg-green-500 text-black opacity-0 group-hover:opacity-100 transition shadow-lg"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-5 w-5 ml-0.5"
-                    >
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                  </Button>
-                </div>
-                <div className="text-sm font-medium line-clamp-1">Album Title {item}</div>
-                <div className="text-xs text-white/70 line-clamp-1 mt-1">Various Artists</div>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="bg-zinc-800/40 rounded-md aspect-square animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {popularArtists.map((artist) => (
+                <ArtistCard
+                  key={artist.id}
+                  artist={{
+                    ...artist,
+                    // Xử lý URL cho ảnh nghệ sĩ
+                    image: getDirectMediaUrl(artist.image)
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

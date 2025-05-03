@@ -1,13 +1,15 @@
-import type React from "react"
-import "./globals.css"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/context/auth-context"
-import { Toaster } from "@/components/ui/toaster"
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/context/auth-context";
+import { Toaster } from "@/components/ui/toaster";
+import { PlayerProvider } from "@/components/player/PlayerProvider";
+import { PlayerBar } from "@/components/player/PlayerBar";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: {
     template: '%s | Spotify Clone',
     default: 'Spotify Clone',
@@ -27,19 +29,32 @@ export const metadata = {
     // },
   ],
 };
+
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <AuthProvider>{children}</AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <PlayerProvider>
+              <main className="pb-24">
+                {children}
+              </main>
+              <PlayerBar />
+            </PlayerProvider>
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

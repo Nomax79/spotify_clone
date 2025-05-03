@@ -1,422 +1,725 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
-import { Search, ChevronLeft, ChevronRight, Play, Grid, List, Filter, Plus } from "lucide-react"
-import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { postmanApi } from "@/lib/api/postman"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { musicApi } from "@/lib/api"
-import type { Playlist, Album, Song } from "@/types"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
+import {
+  Heart,
+  Clock,
+  List,
+  Music,
+  Play,
+  Pause,
+  Plus,
+  ListMusic,
+  History,
+  Grid
+} from "lucide-react"
+
+interface Song {
+  id: string
+  title: string
+  artist: string
+  duration: number
+  cover_image: string
+  audio_file: string
+}
+
+interface Playlist {
+  id: string
+  name: string
+  description?: string
+  cover_image?: string
+  owner: string
+  songs_count: number
+  created_at: string
+}
+
+interface PlayHistory {
+  id: string
+  song: Song
+  played_at: string
+}
 
 export default function LibraryPage() {
-  const { user } = useAuth()
+  const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
-
-  const [view, setView] = useState<"grid" | "list">("grid")
-  const [filter, setFilter] = useState<"all" | "playlists" | "albums" | "artists" | "songs">("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [playlists, setPlaylists] = useState<Playlist[]>([])
-  const [albums, setAlbums] = useState<Album[]>([])
+  const { toast } = useToast()
   const [likedSongs, setLikedSongs] = useState<Song[]>([])
-  const [loading, setLoading] = useState(true)
+  const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([])
+  const [playHistory, setPlayHistory] = useState<PlayHistory[]>([])
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<Song | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState("all")
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
+  const [allSongs, setAllSongs] = useState<Song[]>([])
 
-  // If user is not logged in, redirect to home page
+  // Chuyển hướng nếu không đăng nhập
   useEffect(() => {
-    if (!user) {
-      router.push("/")
+    if (!loading && !isAuthenticated) {
+      router.push("/login")
     }
-  }, [user, router])
+  }, [isAuthenticated, loading, router])
 
-  // Fetch library data
+  // Lấy dữ liệu thư viện
   useEffect(() => {
-    const fetchLibraryData = async () => {
-      if (!user) return
+    if (isAuthenticated) {
+      const fetchLibraryData = async () => {
+        setIsLoading(true)
+        try {
+          // Lấy danh sách tất cả bài hát
+          const songsData = await postmanApi.music.getSongs()
+          setAllSongs(songsData.results || [])
 
-      try {
-        setLoading(true)
+          // Lấy danh sách bài hát đã thích
+          const libraryData = await postmanApi.music.getLibrary()
+          setLikedSongs(libraryData.liked_songs || [])
 
-        // In a real app, you would have an API endpoint for the user's library
-        // For now, we'll fetch playlists and albums
+          // Lấy danh sách playlist của người dùng
+          const playlistsData = await postmanApi.music.getPlaylists()
+          setUserPlaylists(playlistsData.results || [])
 
-        const [playlistsData, albumsData, songsData] = await Promise.all([
-          musicApi.getPlaylists(),
-          musicApi.getAlbums(),
-          musicApi.getSongs(),
-        ])
-
-        setPlaylists(playlistsData.length > 0 ? playlistsData : mockPlaylists)
-        setAlbums(albumsData.length > 0 ? albumsData : mockAlbums)
-
-        // For liked songs, we would need an API endpoint
-        // For now, we'll use mock data
-        setLikedSongs(mockLikedSongs)
-      } catch (error) {
-        console.error("Error fetching library data:", error)
-
-        // Use mock data if API fails
-        setPlaylists(mockPlaylists)
-        setAlbums(mockAlbums)
-        setLikedSongs(mockLikedSongs)
-      } finally {
-        setLoading(false)
+          // Lấy lịch sử nghe
+          const historyData = await postmanApi.music.getPlayHistory({
+            page: 1,
+            page_size: 30
+          })
+          setPlayHistory(historyData.results || [])
+        } catch (error) {
+          console.error("Error fetching library data:", error)
+          toast({
+            title: "Lỗi tải dữ liệu",
+            description: "Không thể tải dữ liệu thư viện. Vui lòng thử lại sau.",
+            variant: "destructive",
+          })
+        } finally {
+          setIsLoading(false)
+        }
       }
+
+      fetchLibraryData()
     }
+  }, [isAuthenticated, toast])
 
-    fetchLibraryData()
-  }, [user])
+  // Xử lý phát nhạc
+  const handlePlaySong = async (song: Song) => {
+    try {
+      if (currentlyPlaying?.id === song.id) {
+        // Toggle play/pause nếu đang phát bài hát đó
+        if (isPlaying) {
+          audioElement?.pause()
+        } else {
+          audioElement?.play()
+        }
+        setIsPlaying(!isPlaying)
+      } else {
+        // Đổi bài hát
+        if (audioElement) {
+          audioElement.pause()
+        }
 
-  // Filter items based on search query and filter type
-  const filteredItems = () => {
-    let items: Array<{ id: string; type: string; title: string; subtitle: string; image: string; date?: string }> = []
+        // Ghi nhận lượt phát
+        await postmanApi.music.playSong(song.id)
 
-    // Add playlists
-    if (filter === "all" || filter === "playlists") {
-      items = [
-        ...items,
-        ...playlists.map((playlist) => ({
-          id: playlist.id,
-          type: "playlist",
-          title: playlist.title,
-          subtitle: `Danh sách phát • ${playlist.created_by || user?.username}`,
-          image: playlist.cover_image || "/placeholder.svg?height=200&width=200",
-          date: playlist.created_at,
-        })),
-      ]
-    }
+        // Cập nhật trạng thái người dùng
+        await postmanApi.music.updateUserStatus({
+          currently_playing: song.id,
+          is_listening: true,
+          status_text: `Đang nghe ${song.title}`,
+        })
 
-    // Add albums
-    if (filter === "all" || filter === "albums") {
-      items = [
-        ...items,
-        ...albums.map((album) => ({
-          id: album.id,
-          type: "album",
-          title: album.title,
-          subtitle: `Album • ${album.artist}`,
-          image: album.cover_image || "/placeholder.svg?height=200&width=200",
-          date: album.release_date,
-        })),
-      ]
-    }
+        // Tạo audio element mới
+        const audio = new Audio(song.audio_file)
+        setAudioElement(audio)
+        setCurrentlyPlaying(song)
 
-    // Add liked songs (as a special item)
-    if ((filter === "all" || filter === "playlists") && likedSongs.length > 0) {
-      items.unshift({
-        id: "liked-songs",
-        type: "liked-songs",
-        title: "Bài hát đã thích",
-        subtitle: `Danh sách phát • ${likedSongs.length} bài hát`,
-        image: "/placeholder.svg?height=200&width=200&text=♥",
+        audio.onloadedmetadata = () => {
+          audio.play()
+          setIsPlaying(true)
+        }
+
+        audio.onended = () => {
+          setIsPlaying(false)
+        }
+      }
+    } catch (error) {
+      console.error("Error playing song:", error)
+      toast({
+        title: "Lỗi phát nhạc",
+        description: "Không thể phát bài hát. Vui lòng thử lại sau.",
+        variant: "destructive",
       })
     }
+  }
 
-    // Filter by search query
-    if (searchQuery) {
-      items = items.filter(
-        (item) =>
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.subtitle.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
+  // Xử lý bỏ thích bài hát
+  const handleUnlikeSong = async (song: Song) => {
+    try {
+      await postmanApi.music.unlikeSong(song.id)
+
+      // Cập nhật UI
+      setLikedSongs(prev => prev.filter(s => s.id !== song.id))
+
+      toast({
+        title: "Đã bỏ thích",
+        description: `"${song.title}" đã được xóa khỏi danh sách yêu thích`,
+      })
+    } catch (error) {
+      console.error("Error unliking song:", error)
+      toast({
+        title: "Lỗi",
+        description: "Không thể bỏ thích bài hát. Vui lòng thử lại sau.",
+        variant: "destructive",
+      })
     }
-
-    return items
   }
 
-  // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return ""
+  // Xử lý thêm vào hàng đợi
+  const handleAddToQueue = async (song: Song) => {
+    try {
+      await postmanApi.music.addToQueue(song.id)
+      toast({
+        title: "Đã thêm vào hàng đợi",
+        description: `Đã thêm "${song.title}" vào hàng đợi phát`,
+      })
+    } catch (error) {
+      console.error("Error adding to queue:", error)
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm vào hàng đợi. Vui lòng thử lại sau.",
+        variant: "destructive",
+      })
+    }
+  }
 
+  // Tạo một playlist mới
+  const handleCreatePlaylist = async () => {
+    try {
+      const name = prompt("Nhập tên playlist mới:")
+      if (!name) return
+
+      const newPlaylist = await postmanApi.music.createPlaylist({
+        name,
+        description: "",
+        is_public: true
+      })
+
+      // Cập nhật UI
+      setUserPlaylists(prev => [newPlaylist, ...prev])
+
+      toast({
+        title: "Playlist đã được tạo",
+        description: `Playlist "${name}" đã được tạo thành công`,
+      })
+    } catch (error) {
+      console.error("Error creating playlist:", error)
+      toast({
+        title: "Lỗi",
+        description: "Không thể tạo playlist. Vui lòng thử lại sau.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Format thời gian
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Format thời gian lịch sử
+  const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString()
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (diffInSeconds < 60) return 'Vừa xong'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút trước`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ trước`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} ngày trước`
+
+    // Format date
+    return date.toLocaleDateString('vi-VN')
   }
 
-  // Mock data for UI display when API data is not available
-  const mockPlaylists = [
-    {
-      id: "p1",
-      title: "My Playlist #1",
-      created_by: user?.username,
-      cover_image: "/placeholder.svg?height=200&width=200&text=P1",
-      created_at: new Date().toISOString(),
-      is_public: true,
-    },
-    {
-      id: "p2",
-      title: "Chill Vibes",
-      created_by: user?.username,
-      cover_image: "/placeholder.svg?height=200&width=200&text=CV",
-      created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-      is_public: true,
-    },
-    {
-      id: "p3",
-      title: "Workout Mix",
-      created_by: user?.username,
-      cover_image: "/placeholder.svg?height=200&width=200&text=WM",
-      created_at: new Date(Date.now() - 86400000 * 14).toISOString(),
-      is_public: false,
-    },
-  ]
+  // Xử lý thích bài hát
+  const handleLikeSong = async (song: Song) => {
+    try {
+      await postmanApi.music.likeSong(song.id)
+      toast({
+        title: "Đã thích",
+        description: `"${song.title}" đã được thêm vào danh sách yêu thích`,
+      })
 
-  const mockAlbums = [
-    {
-      id: "a1",
-      title: "Chúng Ta Của Hiện Tại",
-      artist: "Sơn Tùng M-TP",
-      release_date: "2020-12-20",
-      cover_image: "/placeholder.svg?height=200&width=200&text=CTCHT",
-    },
-    {
-      id: "a2",
-      title: "Có Chắc Yêu Là Đây",
-      artist: "Sơn Tùng M-TP",
-      release_date: "2020-07-05",
-      cover_image: "/placeholder.svg?height=200&width=200&text=CCYLD",
-    },
-    {
-      id: "a3",
-      title: "Hoàng",
-      artist: "Hoàng Thùy Linh",
-      release_date: "2019-10-20",
-      cover_image: "/placeholder.svg?height=200&width=200&text=H",
-    },
-  ]
+      // Thêm bài hát vào danh sách đã thích
+      setLikedSongs(prev => [...prev, song])
+    } catch (error) {
+      console.error("Error liking song:", error)
+      toast({
+        title: "Lỗi",
+        description: "Không thể thích bài hát. Vui lòng thử lại sau.",
+        variant: "destructive",
+      })
+    }
+  }
 
-  const mockLikedSongs = [
-    {
-      id: "s1",
-      title: "Chúng Ta Của Hiện Tại",
-      artist: "Sơn Tùng M-TP",
-      album: "Chúng Ta Của Hiện Tại (Single)",
-      duration: 289,
-      cover_image: "/placeholder.svg?height=60&width=60",
-    },
-    {
-      id: "s2",
-      title: "Có Chắc Yêu Là Đây",
-      artist: "Sơn Tùng M-TP",
-      album: "Có Chắc Yêu Là Đây (Single)",
-      duration: 218,
-      cover_image: "/placeholder.svg?height=60&width=60",
-    },
-    {
-      id: "s3",
-      title: "Chạy Ngay Đi",
-      artist: "Sơn Tùng M-TP",
-      album: "Chạy Ngay Đi (Single)",
-      duration: 248,
-      cover_image: "/placeholder.svg?height=60&width=60",
-    },
-  ]
-
-  if (!user) {
-    return null // Don't render anything while checking authentication
+  // Loading state
+  if (loading || isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-900 to-black text-white">
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full bg-black/20 text-white"
-              onClick={() => router.back()}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full bg-black/20 text-white"
-              onClick={() => router.forward()}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`rounded-full ${view === "grid" ? "bg-zinc-800" : "bg-transparent"}`}
-              onClick={() => setView("grid")}
-            >
-              <Grid className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`rounded-full ${view === "list" ? "bg-zinc-800" : "bg-transparent"}`}
-              onClick={() => setView("list")}
-            >
-              <List className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <h1 className="text-3xl font-bold">Thư viện của bạn</h1>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <Input
-                placeholder="Tìm kiếm trong thư viện"
-                className="pl-9 bg-zinc-800 border-none h-10 text-white focus-visible:ring-0 w-60"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Filter className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700 text-white">
-                <DropdownMenuItem
-                  className={`cursor-pointer hover:bg-zinc-700 focus:bg-zinc-700 ${filter === "all" ? "bg-zinc-700" : ""}`}
-                  onClick={() => setFilter("all")}
-                >
-                  Tất cả
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={`cursor-pointer hover:bg-zinc-700 focus:bg-zinc-700 ${filter === "playlists" ? "bg-zinc-700" : ""}`}
-                  onClick={() => setFilter("playlists")}
-                >
-                  Danh sách phát
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={`cursor-pointer hover:bg-zinc-700 focus:bg-zinc-700 ${filter === "albums" ? "bg-zinc-700" : ""}`}
-                  onClick={() => setFilter("albums")}
-                >
-                  Album
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Link href="/create-playlist">
-              <Button className="bg-green-500 hover:bg-green-600 text-black">
-                <Plus className="h-5 w-5 mr-2" />
-                Tạo mới
-              </Button>
+    <div className="min-h-screen bg-black text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-zinc-900/80 backdrop-blur-sm border-b border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="text-xl font-bold text-green-500">
+              Spotify Clone
             </Link>
+            <nav className="hidden md:flex space-x-4">
+              <Link href="/dashboard" className="text-white/70 hover:text-green-500">
+                Trang chủ
+              </Link>
+              <Link href="/library" className="text-white hover:text-green-500">
+                Thư viện
+              </Link>
+              <Link href="/playlists" className="text-white/70 hover:text-green-500">
+                Playlist
+              </Link>
+            </nav>
           </div>
+
+          {user && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {user.username || user.email}
+              </span>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto py-8 px-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Thư viện của bạn</h1>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
-          </div>
-        ) : filteredItems().length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="bg-zinc-800 rounded-full p-6 mb-4">
-              <Search className="h-12 w-12 text-white/50" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Không tìm thấy kết quả</h2>
-            <p className="text-white/70 max-w-md">
-              {searchQuery
-                ? `Không tìm thấy kết quả cho "${searchQuery}". Hãy thử tìm kiếm với từ khóa khác.`
-                : "Thư viện của bạn đang trống. Hãy thêm nội dung vào thư viện của bạn."}
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Grid view */}
-            {view === "grid" && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {filteredItems().map((item) => {
-                  const itemLink =
-                    item.type === "playlist"
-                      ? `/playlist/${item.id}`
-                      : item.type === "album"
-                        ? `/album/${item.id}`
-                        : "/liked-songs"
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-6 bg-zinc-800/40">
+            <TabsTrigger value="all" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-500">
+              <Grid className="h-4 w-4 mr-2" />
+              Tất cả
+            </TabsTrigger>
+            <TabsTrigger value="liked" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-500">
+              <Heart className="h-4 w-4 mr-2" />
+              Bài hát đã thích
+            </TabsTrigger>
+            <TabsTrigger value="playlists" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-500">
+              <ListMusic className="h-4 w-4 mr-2" />
+              Playlist của bạn
+            </TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-500">
+              <History className="h-4 w-4 mr-2" />
+              Lịch sử nghe
+            </TabsTrigger>
+          </TabsList>
 
-                  return (
-                    <Link href={itemLink} key={`${item.type}-${item.id}`}>
-                      <div className="bg-zinc-800/50 p-4 rounded-lg hover:bg-zinc-800/80 transition cursor-pointer group">
-                        <div className="relative mb-4">
-                          <Image
-                            src={item.image || "/placeholder.svg"}
-                            width={200}
-                            height={200}
-                            alt={item.title}
-                            className={`w-full ${item.type === "liked-songs" ? "rounded-full" : "rounded"}`}
-                          />
-                          <Button
-                            size="icon"
-                            className="absolute bottom-2 right-2 rounded-full bg-green-500 text-black opacity-0 group-hover:opacity-100 transition shadow-lg"
-                          >
-                            <Play className="h-5 w-5 ml-0.5" />
-                          </Button>
-                        </div>
-                        <div className="font-medium truncate">{item.title}</div>
-                        <div className="text-sm text-white/70 truncate">{item.subtitle}</div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* List view */}
-            {view === "list" && (
-              <div className="bg-zinc-800/30 rounded-lg overflow-hidden">
-                <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 border-b border-white/10 text-white/70 text-sm">
+          {/* Tất cả bài hát */}
+          <TabsContent value="all">
+            {allSongs.length > 0 ? (
+              <div className="bg-zinc-900/30 rounded-md">
+                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 p-4 border-b border-white/5 text-sm text-zinc-400">
+                  <div className="w-10 text-center">#</div>
                   <div>Tiêu đề</div>
-                  <div className="text-right">Ngày thêm</div>
-                  <div className="w-8"></div>
+                  <div className="w-32 text-right">Thời lượng</div>
+                  <div className="w-20"></div>
                 </div>
 
-                <div className="divide-y divide-white/10">
-                  {filteredItems().map((item) => {
-                    const itemLink =
-                      item.type === "playlist"
-                        ? `/playlist/${item.id}`
-                        : item.type === "album"
-                          ? `/album/${item.id}`
-                          : "/liked-songs"
+                {allSongs.map((song, index) => (
+                  <div
+                    key={song.id}
+                    className="grid grid-cols-[auto_1fr_auto_auto] gap-4 p-4 hover:bg-white/5 items-center group"
+                  >
+                    <div className="w-10 text-center text-zinc-400">
+                      <span className="group-hover:hidden">{index + 1}</span>
+                      <button
+                        className="hidden group-hover:block"
+                        onClick={() => handlePlaySong(song)}
+                      >
+                        {currentlyPlaying?.id === song.id && isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
 
-                    return (
-                      <Link href={itemLink} key={`${item.type}-${item.id}`}>
-                        <div className="grid grid-cols-[1fr_auto_auto] gap-4 p-4 hover:bg-zinc-800/50 group">
-                          <div className="flex items-center gap-4">
-                            <Image
-                              src={item.image || "/placeholder.svg"}
-                              width={50}
-                              height={50}
-                              alt={item.title}
-                              className={`${item.type === "liked-songs" ? "rounded-full" : "rounded"}`}
-                            />
-                            <div>
-                              <div className="font-medium">{item.title}</div>
-                              <div className="text-sm text-white/70">{item.subtitle}</div>
-                            </div>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative h-10 w-10 flex-shrink-0">
+                        {song.cover_image ? (
+                          <Image
+                            src={song.cover_image}
+                            alt={song.title}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-zinc-800 flex items-center justify-center rounded">
+                            <Music className="h-5 w-5 text-zinc-500" />
                           </div>
-                          <div className="flex items-center text-white/70">{formatDate(item.date)}</div>
-                          <div className="flex items-center">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-full opacity-0 group-hover:opacity-100"
-                            >
-                              <Play className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{song.title}</div>
+                        <div className="text-sm text-zinc-400 truncate">{song.artist}</div>
+                      </div>
+                    </div>
+
+                    <div className="w-32 text-zinc-400 text-right">
+                      {formatDuration(song.duration)}
+                    </div>
+
+                    <div className="w-20 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          const isLiked = likedSongs.some(likedSong => likedSong.id === song.id);
+                          if (isLiked) {
+                            handleUnlikeSong(song);
+                          } else {
+                            handleLikeSong(song);
+                          }
+                        }}
+                        className="p-2 rounded-full hover:bg-white/10"
+                        title={likedSongs.some(likedSong => likedSong.id === song.id) ? "Bỏ thích" : "Thích"}
+                      >
+                        {likedSongs.some(likedSong => likedSong.id === song.id) ? (
+                          <Heart className="h-4 w-4 fill-green-500 text-green-500" />
+                        ) : (
+                          <Heart className="h-4 w-4" />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => handleAddToQueue(song)}
+                        className="p-2 rounded-full hover:bg-white/10"
+                        title="Thêm vào hàng đợi"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-zinc-900/30 rounded-md">
+                <Music className="h-16 w-16 mx-auto text-zinc-600 mb-4" />
+                <h3 className="text-xl font-bold mb-2">Chưa có bài hát nào</h3>
+                <p className="text-zinc-400 mb-6">Hãy thêm bài hát hoặc tìm kiếm bài hát mới</p>
+                <Link href="/dashboard">
+                  <Button className="bg-green-500 hover:bg-green-600 text-black font-bold">
+                    Khám phá nhạc
+                  </Button>
+                </Link>
               </div>
             )}
-          </>
-        )}
-      </div>
+          </TabsContent>
+
+          {/* Bài hát đã thích */}
+          <TabsContent value="liked">
+            {likedSongs.length > 0 ? (
+              <div className="bg-zinc-900/30 rounded-md">
+                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 p-4 border-b border-white/5 text-sm text-zinc-400">
+                  <div className="w-10 text-center">#</div>
+                  <div>Tiêu đề</div>
+                  <div className="w-32 text-right">Thời lượng</div>
+                  <div className="w-20"></div>
+                </div>
+
+                {likedSongs.map((song, index) => (
+                  <div
+                    key={song.id}
+                    className="grid grid-cols-[auto_1fr_auto_auto] gap-4 p-4 hover:bg-white/5 items-center group"
+                  >
+                    <div className="w-10 text-center text-zinc-400">
+                      <span className="group-hover:hidden">{index + 1}</span>
+                      <button
+                        className="hidden group-hover:block"
+                        onClick={() => handlePlaySong(song)}
+                      >
+                        {currentlyPlaying?.id === song.id && isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative h-10 w-10 flex-shrink-0">
+                        {song.cover_image ? (
+                          <Image
+                            src={song.cover_image}
+                            alt={song.title}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-zinc-800 flex items-center justify-center rounded">
+                            <Music className="h-5 w-5 text-zinc-500" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{song.title}</div>
+                        <div className="text-sm text-zinc-400 truncate">{song.artist}</div>
+                      </div>
+                    </div>
+
+                    <div className="w-32 text-zinc-400 text-right">
+                      {formatDuration(song.duration)}
+                    </div>
+
+                    <div className="w-20 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          const isLiked = likedSongs.some(likedSong => likedSong.id === song.id);
+                          if (isLiked) {
+                            handleUnlikeSong(song);
+                          } else {
+                            handleLikeSong(song);
+                          }
+                        }}
+                        className="p-2 rounded-full hover:bg-white/10"
+                        title={likedSongs.some(likedSong => likedSong.id === song.id) ? "Bỏ thích" : "Thích"}
+                      >
+                        {likedSongs.some(likedSong => likedSong.id === song.id) ? (
+                          <Heart className="h-4 w-4 fill-green-500 text-green-500" />
+                        ) : (
+                          <Heart className="h-4 w-4" />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => handleAddToQueue(song)}
+                        className="p-2 rounded-full hover:bg-white/10"
+                        title="Thêm vào hàng đợi"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-zinc-900/30 rounded-md">
+                <Heart className="h-16 w-16 mx-auto text-zinc-600 mb-4" />
+                <h3 className="text-xl font-bold mb-2">Chưa có bài hát nào được thích</h3>
+                <p className="text-zinc-400 mb-6">Thích bài hát bằng cách nhấn biểu tượng trái tim</p>
+                <Link href="/dashboard">
+                  <Button className="bg-green-500 hover:bg-green-600 text-black font-bold">
+                    Khám phá nhạc
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Playlist của bạn */}
+          <TabsContent value="playlists">
+            <div className="mb-6">
+              <Button
+                onClick={handleCreatePlaylist}
+                className="bg-green-500 hover:bg-green-600 text-black font-bold"
+              >
+                <Plus className="h-4 w-4 mr-2" /> Tạo playlist mới
+              </Button>
+            </div>
+
+            {userPlaylists.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {userPlaylists.map(playlist => (
+                  <Link
+                    key={playlist.id}
+                    href={`/playlists/${playlist.id}`}
+                    className="bg-zinc-800/60 rounded-md p-4 transition hover:bg-zinc-700/70"
+                  >
+                    <div className="aspect-square mb-4 overflow-hidden rounded-md bg-zinc-900/80 relative">
+                      {playlist.cover_image ? (
+                        <Image
+                          src={playlist.cover_image}
+                          alt={playlist.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-zinc-800">
+                          <Music className="h-12 w-12 text-zinc-400" />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-white truncate">{playlist.name}</h3>
+                    <p className="text-sm text-zinc-400 truncate">
+                      {playlist.songs_count} bài hát
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-zinc-900/30 rounded-md">
+                <ListMusic className="h-16 w-16 mx-auto text-zinc-600 mb-4" />
+                <h3 className="text-xl font-bold mb-2">Chưa có playlist nào</h3>
+                <p className="text-zinc-400 mb-6">Tạo playlist để lưu trữ và tổ chức nhạc yêu thích</p>
+                <Button
+                  onClick={handleCreatePlaylist}
+                  className="bg-green-500 hover:bg-green-600 text-black font-bold"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Tạo playlist
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Lịch sử nghe */}
+          <TabsContent value="history">
+            {playHistory.length > 0 ? (
+              <div className="bg-zinc-900/30 rounded-md">
+                <div className="grid grid-cols-[1fr_auto_auto] gap-4 p-4 border-b border-white/5 text-sm text-zinc-400">
+                  <div>Tiêu đề</div>
+                  <div className="w-32 text-right">Thời gian</div>
+                  <div className="w-20"></div>
+                </div>
+
+                {playHistory.map((history) => (
+                  <div
+                    key={history.id}
+                    className="grid grid-cols-[1fr_auto_auto] gap-4 p-4 hover:bg-white/5 items-center group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative h-10 w-10 flex-shrink-0">
+                        {history.song.cover_image ? (
+                          <Image
+                            src={history.song.cover_image}
+                            alt={history.song.title}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-zinc-800 flex items-center justify-center rounded">
+                            <Music className="h-5 w-5 text-zinc-500" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{history.song.title}</div>
+                        <div className="text-sm text-zinc-400 truncate">{history.song.artist}</div>
+                      </div>
+                    </div>
+
+                    <div className="w-32 text-zinc-400 text-right">
+                      {formatTimeAgo(history.played_at)}
+                    </div>
+
+                    <div className="w-20 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handlePlaySong(history.song)}
+                        className="p-2 rounded-full hover:bg-white/10"
+                        title="Phát"
+                      >
+                        {currentlyPlaying?.id === history.song.id && isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => handleAddToQueue(history.song)}
+                        className="p-2 rounded-full hover:bg-white/10"
+                        title="Thêm vào hàng đợi"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-zinc-900/30 rounded-md">
+                <History className="h-16 w-16 mx-auto text-zinc-600 mb-4" />
+                <h3 className="text-xl font-bold mb-2">Chưa có lịch sử nghe</h3>
+                <p className="text-zinc-400 mb-6">Khi bạn nghe nhạc, nó sẽ xuất hiện ở đây</p>
+                <Link href="/dashboard">
+                  <Button className="bg-green-500 hover:bg-green-600 text-black font-bold">
+                    Khám phá nhạc
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      {/* Player bar - only show if a song is playing */}
+      {currentlyPlaying && (
+        <footer className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-white/10 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative h-12 w-12 overflow-hidden rounded">
+                {currentlyPlaying.cover_image ? (
+                  <Image
+                    src={currentlyPlaying.cover_image}
+                    alt={currentlyPlaying.title}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-zinc-800">
+                    <Music className="h-6 w-6 text-zinc-400" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <h4 className="font-medium">{currentlyPlaying.title}</h4>
+                <p className="text-sm text-zinc-400">{currentlyPlaying.artist}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  if (isPlaying) {
+                    audioElement?.pause()
+                  } else {
+                    audioElement?.play()
+                  }
+                  setIsPlaying(!isPlaying)
+                }}
+                className="p-3 rounded-full bg-white text-black hover:scale-105 transition-transform"
+              >
+                {isPlaying ? (
+                  <Pause className="h-5 w-5" />
+                ) : (
+                  <Play className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          </div>
+        </footer>
+      )}
     </div>
   )
 }
