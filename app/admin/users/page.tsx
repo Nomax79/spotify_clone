@@ -12,13 +12,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Pencil, Trash2, Search, UserPlus, Shield, ShieldAlert } from "lucide-react"
+import { Pencil, Trash2, Search, UserPlus, Shield, ShieldAlert, MoreHorizontal } from "lucide-react"
 import { accountsApi } from "@/lib/api"
 import type { User } from "@/types"
 import Image from "next/image"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/auth-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth()
@@ -208,31 +215,90 @@ export default function AdminUsersPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedUser(user)
-                          setIsEditUserOpen(true)
-                        }}
-                        disabled={user.id === currentUser?.id}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500"
-                        onClick={() => {
-                          setSelectedUser(user)
-                          setIsDeleteUserOpen(true)
-                        }}
-                        disabled={user.id === currentUser?.id}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {user.id !== currentUser?.id && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedUser(user)
+                            setIsEditUserOpen(true)
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-zinc-800 border-zinc-700 text-white">
+                            <DropdownMenuItem
+                              className="cursor-pointer flex items-center gap-2"
+                              onClick={async () => {
+                                try {
+                                  await accountsApi.toggleUserActive(user.id);
+                                  // Cập nhật danh sách người dùng
+                                  setUsers(users.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
+                                } catch (error) {
+                                  console.error("Error toggling user active state:", error);
+                                  alert("Có lỗi xảy ra khi thay đổi trạng thái người dùng");
+                                }
+                              }}
+                            >
+                              {user.is_active ? (
+                                <>
+                                  <ShieldAlert className="h-4 w-4 text-red-500" />
+                                  <span>Vô hiệu hóa tài khoản</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Shield className="h-4 w-4 text-green-500" />
+                                  <span>Kích hoạt tài khoản</span>
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="cursor-pointer flex items-center gap-2"
+                              onClick={async () => {
+                                try {
+                                  await accountsApi.toggleUserAdmin(user.id);
+                                  // Cập nhật danh sách người dùng
+                                  setUsers(users.map(u => u.id === user.id ? { ...u, is_admin: !u.is_admin } : u));
+                                } catch (error) {
+                                  console.error("Error toggling user admin state:", error);
+                                  alert("Có lỗi xảy ra khi thay đổi quyền admin");
+                                }
+                              }}
+                            >
+                              {user.is_admin ? (
+                                <>
+                                  <Shield className="h-4 w-4 text-yellow-500" />
+                                  <span>Thu hồi quyền Admin</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Shield className="h-4 w-4 text-green-500" />
+                                  <span>Cấp quyền Admin</span>
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-zinc-700" />
+                            <DropdownMenuItem
+                              className="text-red-500 cursor-pointer flex items-center gap-2"
+                              onClick={() => {
+                                setSelectedUser(user)
+                                setIsDeleteUserOpen(true)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Xóa người dùng</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

@@ -285,7 +285,7 @@ export function PlayerBar() {
                     <div className="relative h-14 w-14 shrink-0 rounded overflow-hidden">
                         <Image
                             src={currentSong.image_url || "/placeholder.jpg"}
-                            alt={currentSong.title}
+                            alt={currentSong.title || "Album cover"}
                             fill
                             className="object-cover"
                             unoptimized
@@ -456,7 +456,7 @@ export function PlayerBar() {
                                         >
                                             <Image
                                                 src={song.image_url || "/placeholder.jpg"}
-                                                alt={song.title}
+                                                alt={song.title || "Song cover"}
                                                 fill
                                                 className="object-cover rounded"
                                                 unoptimized

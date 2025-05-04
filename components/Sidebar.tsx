@@ -10,7 +10,10 @@ import {
     Disc3,
     ListMusic,
     Heart,
-    Plus
+    Plus,
+    Radio,
+    Mic2,
+    LayoutGrid
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -19,9 +22,10 @@ import { useState } from "react"
 export function Sidebar() {
     const pathname = usePathname()
     const [showPlaylists, setShowPlaylists] = useState(true)
+    const [showExplore, setShowExplore] = useState(true)
 
     return (
-        <div className="w-64 h-screen bg-black fixed left-0 top-0 flex flex-col">
+        <div className="w-full h-full bg-black flex flex-col overflow-hidden">
             <div className="p-6">
                 <Link href="/">
                     <div className="flex items-center gap-2">
@@ -36,6 +40,7 @@ export function Sidebar() {
                 </Link>
             </div>
 
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
             <nav className="mt-2">
                 <ul className="space-y-1 px-2">
                     <li>
@@ -84,19 +89,19 @@ export function Sidebar() {
             </nav>
 
             <div className="mt-6 px-4">
-                <div className="space-y-1">
-                    <Link href="/songs">
+                    <div className="py-2 flex items-center justify-between">
                         <Button
                             variant="ghost"
-                            className={cn(
-                                "w-full justify-start text-zinc-400 hover:text-white",
-                                pathname === "/songs" && "text-white"
-                            )}
+                            size="sm"
+                            className="text-zinc-400 hover:text-white"
+                            onClick={() => setShowExplore(!showExplore)}
                         >
-                            <Music className="h-5 w-5 mr-3" />
-                            Bài hát
+                            <p className="font-semibold">KHÁM PHÁ</p>
                         </Button>
-                    </Link>
+                    </div>
+
+                    {showExplore && (
+                        <div className="space-y-1">
                     <Link href="/albums">
                         <Button
                             variant="ghost"
@@ -106,7 +111,7 @@ export function Sidebar() {
                             )}
                         >
                             <Disc3 className="h-5 w-5 mr-3" />
-                            Album
+                                    Albums
                         </Button>
                     </Link>
                     <Link href="/artists">
@@ -117,11 +122,36 @@ export function Sidebar() {
                                 pathname === "/artists" && "text-white"
                             )}
                         >
-                            <ListMusic className="h-5 w-5 mr-3" />
+                                    <Mic2 className="h-5 w-5 mr-3" />
                             Nghệ sĩ
                         </Button>
                     </Link>
+                            <Link href="/genres">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/genres" && "text-white"
+                                    )}
+                                >
+                                    <Radio className="h-5 w-5 mr-3" />
+                                    Thể loại
+                                </Button>
+                            </Link>
+                            <Link href="/playlists">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/playlists" && "text-white"
+                                    )}
+                                >
+                                    <LayoutGrid className="h-5 w-5 mr-3" />
+                                    Playlists
+                                </Button>
+                            </Link>
                 </div>
+                    )}
             </div>
 
             <div className="mt-6 px-4">
@@ -166,6 +196,7 @@ export function Sidebar() {
                         </Button>
                     </div>
                 )}
+                </div>
             </div>
         </div>
     )

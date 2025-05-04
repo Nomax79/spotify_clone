@@ -33,12 +33,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("spotify_token")
-      if (token) {
+      const userDataStr = localStorage.getItem("spotify_user")
+
+      if (token && userDataStr) {
         try {
-          const userData = await postmanApi.accounts.getCurrentUser()
+          // Đọc thông tin người dùng từ localStorage
+          const userDataParsed = JSON.parse(userDataStr)
+
+          // Đảm bảo id là string
+          const userData = {
+            ...userDataParsed,
+            id: String(userDataParsed.id)
+          }
+
           setUser(userData)
         } catch (error) {
-          console.error("Failed to get current user:", error)
+          console.error("Failed to parse user data from localStorage:", error)
           localStorage.removeItem("spotify_token")
           localStorage.removeItem("spotify_refresh_token")
           localStorage.removeItem("spotify_user")
@@ -53,24 +63,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
+      console.log("===== ĐẦU QUÁ TRÌNH ĐĂNG NHẬP =====")
       // Call the login API
-      const { access, refresh } = await postmanApi.auth.login(email, password)
+      const response = await postmanApi.auth.login(email, password)
+      const { access, refresh, user: userDataResponse } = response
+      console.log("Đăng nhập thành công, nhận được token:", { access: access.substring(0, 15) + "..." })
 
       // Save tokens
       localStorage.setItem("spotify_token", access)
       localStorage.setItem("spotify_refresh_token", refresh)
+      console.log("Đã lưu token vào localStorage")
 
-      // Get user data
-      const userData = await postmanApi.accounts.getCurrentUser()
+      // Chuyển đổi id từ number sang string để phù hợp với type User
+      const userData = {
+        ...userDataResponse,
+        id: String(userDataResponse.id)
+      }
 
-      // Save user data
+      // Lưu user data từ response login
       setUser(userData)
       localStorage.setItem("spotify_user", JSON.stringify(userData))
+      console.log("Đã lưu thông tin người dùng vào state và localStorage")
 
-      // Redirect to admin or dashboard based on is_staff property
+      // Kiểm tra quyền admin từ response API và chuyển hướng phù hợp
+      console.log("Kiểm tra quyền admin. is_admin =", userData.is_admin, "Kiểu dữ liệu:", typeof userData.is_admin)
+
       if (userData.is_admin === true) {
-        router.push("/admin")
+        console.log("User has admin privileges, redirecting to admin dashboard")
+        // Sử dụng timeout để đảm bảo chuyển hướng được thực hiện sau khi state đã được cập nhật
+        setTimeout(() => {
+          router.push("/admin")
+        }, 100)
       } else {
+        console.log("User does not have admin privileges, redirecting to dashboard")
         router.push("/dashboard")
       }
     } catch (error: any) {
@@ -147,23 +172,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Kiểm tra xem đã có token trong localStorage chưa
           const token = localStorage.getItem("spotify_token")
           if (token) {
-            // Lấy thông tin người dùng
-            try {
-              const userData = await postmanApi.accounts.getCurrentUser()
-              setUser(userData)
-              localStorage.setItem("spotify_user", JSON.stringify(userData))
+            // Lấy thông tin người dùng từ localStorage
+            const userDataStr = localStorage.getItem("spotify_user")
+            if (userDataStr) {
+              try {
+                const userDataParsed = JSON.parse(userDataStr)
 
-              // Chuyển hướng dựa trên vai trò
-              if (userData.is_admin) {
-                router.push("/admin")
-              } else {
-                router.push("/dashboard")
+                // Đảm bảo id là string
+                const userData = {
+                  ...userDataParsed,
+                  id: String(userDataParsed.id)
+                }
+
+                setUser(userData)
+
+                // Chuyển hướng dựa trên vai trò
+                console.log("OAuth login: Kiểm tra quyền admin. is_admin =", userData.is_admin, "Kiểu dữ liệu:", typeof userData.is_admin)
+                if (userData.is_admin === true) {
+                  console.log("OAuth login: User has admin privileges, redirecting to admin dashboard")
+                  // Sử dụng timeout để đảm bảo chuyển hướng được thực hiện sau khi state đã được cập nhật
+                  setTimeout(() => {
+                    router.push("/admin")
+                  }, 100)
+                } else {
+                  console.log("OAuth login: User does not have admin privileges, redirecting to dashboard")
+                  router.push("/dashboard")
+                }
+              } catch (error) {
+                console.error("Failed to parse user data:", error)
+                localStorage.removeItem("spotify_token")
+                localStorage.removeItem("spotify_refresh_token")
+                localStorage.removeItem("spotify_user")
               }
-            } catch (error) {
-              console.error("Failed to get current user:", error)
+            } else {
+              console.error("No user data found in localStorage")
               localStorage.removeItem("spotify_token")
               localStorage.removeItem("spotify_refresh_token")
-              localStorage.removeItem("spotify_user")
             }
           } else {
             // Người dùng đã đóng cửa sổ mà không đăng nhập

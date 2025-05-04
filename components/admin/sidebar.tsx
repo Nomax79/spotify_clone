@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Music, Disc, ListMusic, Settings, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react"
+import { LayoutDashboard, Users, Music, Disc, ListMusic, Settings, ChevronLeft, ChevronRight, AlertCircle, MessageSquare, Flag, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +14,9 @@ export default function AdminSidebar() {
   const tabs = [
     { id: "dashboard", label: "Bảng điều khiển", icon: LayoutDashboard, href: "/admin" },
     { id: "users", label: "Người dùng", icon: Users, href: "/admin/users" },
+    { id: "messages", label: "Tin nhắn", icon: MessageSquare, href: "/admin/messages" },
+    { id: "reports", label: "Báo cáo", icon: Flag, href: "/admin/reports" },
+    { id: "restrictions", label: "Hạn chế chat", icon: Shield, href: "/admin/restrictions" },
     { id: "songs", label: "Bài hát", icon: Music, href: "/admin/songs" },
     { id: "albums", label: "Album", icon: Disc, href: "/admin/albums" },
     { id: "playlists", label: "Playlist", icon: ListMusic, href: "/admin/playlists" },

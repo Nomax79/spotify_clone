@@ -98,7 +98,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         // Chỉ thực hiện trên môi trường client
     }, [])
 
-    const play = useCallback((song: SongType, songs: SongType[] = []) => {
+    const play = useCallback((song: SongType, songs?: SongType[]) => {
         // Cập nhật URL trực tiếp cho file âm thanh
         const processedSong = {
             ...song,
@@ -108,7 +108,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
         setCurrentSong(processedSong);
 
-        if (songs.length > 0) {
+        if (songs && songs.length > 0) {
             // Xử lý URL cho toàn bộ playlist
             const processedSongs = songs.map(s => ({
                 ...s,
