@@ -9,6 +9,7 @@ type AuthContextType = {
   user: User | null
   isLoading: boolean
   isAdmin: boolean
+  accessToken: string | null
   login: (email: string, password: string) => Promise<void>
   loginWithProvider: (provider: string) => Promise<void>
   register: (userData: {
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
   const router = useRouter()
 
   // Check if user is logged in on mount
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           setUser(userData)
+          setAccessToken(token)
         } catch (error) {
           console.error("Failed to parse user data from localStorage:", error)
           localStorage.removeItem("spotify_token")
@@ -72,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Save tokens
       localStorage.setItem("spotify_token", access)
       localStorage.setItem("spotify_refresh_token", refresh)
+      setAccessToken(access)
       console.log("Đã lưu token vào localStorage")
 
       // Chuyển đổi id từ number sang string để phù hợp với type User
@@ -185,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
 
                 setUser(userData)
+                setAccessToken(token)
 
                 // Chuyển hướng dựa trên vai trò
                 console.log("OAuth login: Kiểm tra quyền admin. is_admin =", userData.is_admin, "Kiểu dữ liệu:", typeof userData.is_admin)
@@ -256,7 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = user?.is_admin === true
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAdmin, login, loginWithProvider, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, isAdmin, accessToken, login, loginWithProvider, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/context/auth-context";
+import { ChatProvider } from "@/context/chat-context";
 import { Toaster } from "@/components/ui/toaster";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { PlayerBar } from "@/components/player/PlayerBar";
@@ -45,14 +46,16 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <PlayerProvider>
-              <main className="pb-24">
-                {children}
-              </main>
-              <PlayerBar />
-            </PlayerProvider>
+            <ChatProvider>
+              <PlayerProvider>
+                <main className="pb-24">
+                  {children}
+                </main>
+                <PlayerBar />
+              </PlayerProvider>
+              <Toaster />
+            </ChatProvider>
           </AuthProvider>
-          <Toaster />
         </ThemeProvider>
       </body>
     </html>

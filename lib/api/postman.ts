@@ -377,75 +377,126 @@ export class AccountsCollection extends ApiRequest {
 
 // Collection cho Chat API
 export class ChatCollection extends ApiRequest {
-  // API Chat cơ bản
-  getMessages(params?: any) {
-    return this.get<any>("/api/v1/chat/messages/", params);
-  }
-
-  getMessage(id: string) {
-    return this.get<any>(`/api/v1/chat/messages/${id}/`);
-  }
-
-  sendMessage(data: any) {
-    return this.post<any>("/api/v1/chat/messages/", data);
+  // Chat API v1 mới
+  getMessages(username: string) {
+    return this.get(`/api/v1/chat/messages/${username}/`);
   }
 
   getConversations() {
-    return this.get<any>("/api/v1/chat/conversations/");
+    return this.get(`/api/v1/chat/conversations/`);
   }
 
-  getConversation(userId: string) {
-    return this.get<any>(`/api/v1/chat/conversations/${userId}/`);
+  getRecentConversations(limit = 10) {
+    return this.get(`/api/v1/chat/recent-conversations/?limit=${limit}`);
+  }
+
+  getUnreadCount() {
+    return this.get(`/api/v1/chat/unread-count/`);
+  }
+
+  markAsRead(username: string) {
+    return this.post(`/api/v1/chat/mark-read/${username}/`);
+  }
+
+  // Quản lý kết nối người dùng
+  getConnections() {
+    return this.get(`/api/v1/accounts/connections/`);
+  }
+
+  sendConnectionRequest(userId: string) {
+    return this.post(`/api/v1/accounts/connection-request/`, {
+      user_id: userId,
+    });
+  }
+
+  acceptConnection(userId: string) {
+    return this.post(`/api/v1/accounts/accept-connection/`, {
+      user_id: userId,
+    });
+  }
+
+  declineConnection(userId: string) {
+    return this.post(`/api/v1/accounts/decline-connection/`, {
+      user_id: userId,
+    });
+  }
+
+  blockUser(userId: string) {
+    return this.post(`/api/v1/accounts/block-user/`, { user_id: userId });
+  }
+
+  unblockUser(userId: string) {
+    return this.post(`/api/v1/accounts/unblock-user/`, { user_id: userId });
+  }
+
+  // API cũ (để tương thích ngược)
+  getLegacyMessages(params?: any) {
+    return this.get("/api/chat/messages/", params);
+  }
+
+  getLegacyMessage(id: string) {
+    return this.get(`/api/chat/messages/${id}/`);
+  }
+
+  sendLegacyMessage(data: any) {
+    return this.post("/api/chat/messages/", data);
+  }
+
+  getLegacyConversations() {
+    return this.get("/api/chat/conversations/");
+  }
+
+  getLegacyConversation(userId: string) {
+    return this.get(`/api/chat/conversations/${userId}/`);
   }
 
   reportMessage(data: any) {
-    return this.post<any>("/api/v1/chat/report-message/", data);
+    return this.post("/api/chat/reports/", data);
   }
 
-  // API Admin - Quản lý tin nhắn và nội dung
+  // Admin API
   getAllMessages(params?: any) {
-    return this.get<any>("/api/v1/chat/admin/messages/", params);
+    return this.get("/api/admin/chat/messages/", params);
   }
 
   getAdminMessage(id: string) {
-    return this.get<any>(`/api/v1/chat/admin/messages/${id}/`);
+    return this.get(`/api/admin/chat/messages/${id}/`);
   }
 
   getReports(params?: any) {
-    return this.get<any>("/api/v1/chat/admin/reports/", params);
+    return this.get("/api/admin/chat/reports/", params);
   }
 
   getReportDetail(id: string) {
-    return this.get<any>(`/api/v1/chat/admin/reports/${id}/`);
+    return this.get(`/api/admin/chat/reports/${id}/`);
   }
 
   updateReportStatus(id: string, data: any) {
-    return this.put<any>(`/api/v1/chat/admin/reports/${id}/`, data);
+    return this.patch(`/api/admin/chat/reports/${id}/`, data);
   }
 
   getReportStatistics() {
-    return this.get<any>("/api/v1/chat/admin/reports/statistics/");
+    return this.get("/api/admin/chat/reports/statistics/");
   }
 
   getPendingReports() {
-    return this.get<any>("/api/v1/chat/admin/reports/pending/");
+    return this.get("/api/admin/chat/reports/pending/");
   }
 
-  // API Admin - Quản lý Hạn chế Chat
   getChatRestrictions() {
-    return this.get<any>("/api/v1/chat/admin/restrictions/");
+    return this.get("/api/admin/chat/restrictions/");
   }
 
   createChatRestriction(data: any) {
-    return this.post<any>("/api/v1/chat/admin/restrictions/", data);
+    return this.post("/api/admin/chat/restrictions/", data);
   }
 
   updateChatRestriction(id: string, data: any) {
-    return this.put<any>(`/api/v1/chat/admin/restrictions/${id}/`, data);
+    return this.patch(`/api/admin/chat/restrictions/${id}/`, data);
   }
 
   getUserChatStats(userId: string) {
-    return this.get<any>(`/api/v1/chat/admin/stats/${userId}/`);
+    return this.get(`/api/admin/chat/user-stats/${userId}/`);
   }
 }
 

@@ -132,7 +132,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                 setCurrentIndex(0);
             } else {
                 setPlaylist(processedSongs);
-                // Tìm index của bài hát trong danh sách
+            // Tìm index của bài hát trong danh sách
                 const songIndex = processedSongs.findIndex(s => s.id === song.id);
                 setCurrentIndex(songIndex !== -1 ? songIndex : 0);
             }

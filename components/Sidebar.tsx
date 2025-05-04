@@ -13,7 +13,8 @@ import {
     Plus,
     Radio,
     Mic2,
-    LayoutGrid
+    LayoutGrid,
+    MessageSquare
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -41,54 +42,68 @@ export function Sidebar() {
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
-            <nav className="mt-2">
-                <ul className="space-y-1 px-2">
-                    <li>
-                        <Link href="/">
-                            <Button
-                                variant="ghost"
-                                className={cn(
-                                    "w-full justify-start text-zinc-400 hover:text-white",
-                                    pathname === "/" && "text-white"
-                                )}
-                            >
-                                <Home className="h-5 w-5 mr-3" />
-                                Trang chủ
-                            </Button>
-                        </Link>
-                    </li>
-                    <li>
-                        <Link href="/search">
-                            <Button
-                                variant="ghost"
-                                className={cn(
-                                    "w-full justify-start text-zinc-400 hover:text-white",
-                                    pathname === "/search" && "text-white"
-                                )}
-                            >
-                                <Search className="h-5 w-5 mr-3" />
-                                Tìm kiếm
-                            </Button>
-                        </Link>
-                    </li>
-                    <li>
-                        <Link href="/library">
-                            <Button
-                                variant="ghost"
-                                className={cn(
-                                    "w-full justify-start text-zinc-400 hover:text-white",
-                                    pathname === "/library" && "text-white"
-                                )}
-                            >
-                                <Library className="h-5 w-5 mr-3" />
-                                Thư viện
-                            </Button>
-                        </Link>
-                    </li>
-                </ul>
-            </nav>
+                <nav className="mt-2">
+                    <ul className="space-y-1 px-2">
+                        <li>
+                            <Link href="/">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/" && "text-white"
+                                    )}
+                                >
+                                    <Home className="h-5 w-5 mr-3" />
+                                    Trang chủ
+                                </Button>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link href="/search">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/search" && "text-white"
+                                    )}
+                                >
+                                    <Search className="h-5 w-5 mr-3" />
+                                    Tìm kiếm
+                                </Button>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link href="/chat">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/chat" && "text-white"
+                                    )}
+                                >
+                                    <MessageSquare className="h-5 w-5 mr-3" />
+                                    Chat
+                                </Button>
+                            </Link>
+                        </li>
+                        <li>
+                            <Link href="/library">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/library" && "text-white"
+                                    )}
+                                >
+                                    <Library className="h-5 w-5 mr-3" />
+                                    Thư viện
+                                </Button>
+                            </Link>
+                        </li>
+                    </ul>
+                </nav>
 
-            <div className="mt-6 px-4">
+                <div className="mt-6 px-4">
                     <div className="py-2 flex items-center justify-between">
                         <Button
                             variant="ghost"
@@ -102,30 +117,30 @@ export function Sidebar() {
 
                     {showExplore && (
                         <div className="space-y-1">
-                    <Link href="/albums">
-                        <Button
-                            variant="ghost"
-                            className={cn(
-                                "w-full justify-start text-zinc-400 hover:text-white",
-                                pathname === "/albums" && "text-white"
-                            )}
-                        >
-                            <Disc3 className="h-5 w-5 mr-3" />
+                            <Link href="/albums">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/albums" && "text-white"
+                                    )}
+                                >
+                                    <Disc3 className="h-5 w-5 mr-3" />
                                     Albums
-                        </Button>
-                    </Link>
-                    <Link href="/artists">
-                        <Button
-                            variant="ghost"
-                            className={cn(
-                                "w-full justify-start text-zinc-400 hover:text-white",
-                                pathname === "/artists" && "text-white"
-                            )}
-                        >
+                                </Button>
+                            </Link>
+                            <Link href="/artists">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white",
+                                        pathname === "/artists" && "text-white"
+                                    )}
+                                >
                                     <Mic2 className="h-5 w-5 mr-3" />
-                            Nghệ sĩ
-                        </Button>
-                    </Link>
+                                    Nghệ sĩ
+                                </Button>
+                            </Link>
                             <Link href="/genres">
                                 <Button
                                     variant="ghost"
@@ -150,52 +165,52 @@ export function Sidebar() {
                                     Playlists
                                 </Button>
                             </Link>
-                </div>
+                        </div>
                     )}
-            </div>
-
-            <div className="mt-6 px-4">
-                <div className="py-2 flex items-center justify-between">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-zinc-400 hover:text-white"
-                        onClick={() => setShowPlaylists(!showPlaylists)}
-                    >
-                        <p className="font-semibold">Playlist của bạn</p>
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-800"
-                    >
-                        <Plus className="h-5 w-5" />
-                    </Button>
                 </div>
 
-                {showPlaylists && (
-                    <div className="space-y-1 mt-2 text-sm">
+                <div className="mt-6 px-4">
+                    <div className="py-2 flex items-center justify-between">
                         <Button
                             variant="ghost"
-                            className="w-full justify-start text-zinc-400 hover:text-white px-2"
+                            size="sm"
+                            className="text-zinc-400 hover:text-white"
+                            onClick={() => setShowPlaylists(!showPlaylists)}
                         >
-                            <Heart className="h-4 w-4 mr-3 text-rose-500" />
-                            Bài hát đã thích
+                            <p className="font-semibold">Playlist của bạn</p>
                         </Button>
                         <Button
                             variant="ghost"
-                            className="w-full justify-start text-zinc-400 hover:text-white px-2"
+                            size="icon"
+                            className="h-8 w-8 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-800"
                         >
-                            Playlist #1
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            className="w-full justify-start text-zinc-400 hover:text-white px-2"
-                        >
-                            Playlist #2
+                            <Plus className="h-5 w-5" />
                         </Button>
                     </div>
-                )}
+
+                    {showPlaylists && (
+                        <div className="space-y-1 mt-2 text-sm">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-zinc-400 hover:text-white px-2"
+                            >
+                                <Heart className="h-4 w-4 mr-3 text-rose-500" />
+                                Bài hát đã thích
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-zinc-400 hover:text-white px-2"
+                            >
+                                Playlist #1
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-zinc-400 hover:text-white px-2"
+                            >
+                                Playlist #2
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
