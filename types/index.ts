@@ -15,6 +15,7 @@ export interface User {
   last_login?: string;
   followers_count?: number;
   following_count?: number;
+  avatar?: string;
 }
 
 export interface PublicUser {
@@ -101,15 +102,28 @@ export enum MessageTypeEnum {
   MUSIC = "music",
 }
 
+// Message types
+export type MessageType =
+  | "TEXT"
+  | "SONG"
+  | "PLAYLIST"
+  | "ATTACHMENT"
+  | "IMAGE"
+  | "VOICE_NOTE";
+
 export interface Message {
-  id: string;
-  sender: string;
-  receiver: string;
+  id: number;
+  sender: User;
+  receiver: User;
   content: string;
-  type: MessageTypeEnum;
-  created_at: string;
+  timestamp: string;
   is_read: boolean;
-  shared_song?: Song;
+  message_type: MessageType;
+  shared_song: Song | null;
+  shared_playlist: Playlist | null;
+  attachment: string | null;
+  image: string | null;
+  voice_note: string | null;
 }
 
 export interface Conversation {
@@ -118,4 +132,20 @@ export interface Conversation {
   last_message?: Message;
   created_at: string;
   updated_at: string;
+}
+
+export interface ChatRoom {
+  id: string;
+  partner: User;
+  lastMessage?: Message;
+  unreadCount: number;
+}
+
+// WebSocket message types
+export interface WebSocketMessage {
+  message: string;
+  type: string;
+  sender?: string;
+  sender_id?: string;
+  timestamp?: string;
 }

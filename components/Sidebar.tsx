@@ -91,6 +91,23 @@ export function Sidebar() {
                                 </Button>
                             </Link>
                         </li>
+                        {user && (
+                            <li>
+                                <Link href="/messages">
+                                    <Button
+                                        variant="ghost"
+                                        className={cn(
+                                            "w-full justify-start text-zinc-400 hover:text-white",
+                                            pathname === "/messages" && "text-white",
+                                            pathname.startsWith("/messages") && "text-white"
+                                        )}
+                                    >
+                                        <MessageSquare className="h-5 w-5 mr-3" />
+                                        Tin nhắn
+                                    </Button>
+                                </Link>
+                            </li>
+                        )}
                     </ul>
                 </nav>
 
