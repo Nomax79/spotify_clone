@@ -4,7 +4,8 @@ import Image from "next/image"
 import { Card } from "@/components/ui/card"
 import { PlayButton } from "@/components/music/PlayButton"
 import { usePlayer } from "@/components/player/PlayerContext"
-import { MoreHorizontal, PlusCircle, ListMusic, CheckCircle } from "lucide-react"
+import { useOffline } from "@/context/offline-context"
+import { MoreHorizontal, PlusCircle, ListMusic, CheckCircle, Download, Check, X, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,6 +16,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/context/auth-context"
 
 export interface SongType {
     id: number
@@ -43,8 +45,16 @@ interface SongCardProps {
 }
 
 export function SongCard({ song, className = "", onPlay, playlist }: SongCardProps) {
-    const { checkAuthBeforePlaying, play, addToQueue, currentSong, playlist: currentPlaylist } = usePlayer()
+    const { checkAuthBeforePlaying, play, addToQueue, currentSong, playlist: currentPlaylist, togglePlay } = usePlayer()
+    const { user } = useAuth()
+    const { isDownloaded, downloadSong, deleteDownload, getDownloadById } = useOffline()
     const [showMenu, setShowMenu] = useState(false)
+    const [isDownloading, setIsDownloading] = useState(false)
+
+    // Lấy trạng thái tải xuống của bài hát
+    const songDownload = getDownloadById(song.id)
+    const isAlreadyDownloaded = isDownloaded(song.id)
+    const downloadStatus = songDownload?.status || null
 
     // Kiểm tra xem bài hát có đang phát không
     const isCurrentlyPlaying = currentSong?.id === song.id
@@ -53,18 +63,16 @@ export function SongCard({ song, className = "", onPlay, playlist }: SongCardPro
     const isInQueue = currentPlaylist.some(item => item.id === song.id && item.id !== currentSong?.id)
 
     const handlePlay = () => {
-        // Luôn gọi hàm kiểm tra xác thực trước
-        const isAuthenticated = checkAuthBeforePlaying(song, playlist)
-
-        // Chỉ phát nhạc nếu đã đăng nhập
-        if (isAuthenticated) {
-            if (onPlay) {
-                onPlay()
-            } else {
-                play(song, playlist)
-            }
+        // Không thực hiện bất kỳ kiểm tra nào để đảm bảo phát ngay lập tức
+        if (onPlay) {
+            onPlay()
+        } else if (currentSong?.id === song.id && isCurrentlyPlaying) {
+            // Nếu đang phát bài hát này, chuyển sang trạng thái tạm dừng
+            togglePlay();
+        } else {
+            // Phát trực tiếp
+            play(song, playlist)
         }
-        // Nếu chưa đăng nhập, thông báo sẽ được hiển thị từ checkAuthBeforePlaying
     }
 
     const handleAddToQueue = (e: React.MouseEvent) => {
@@ -106,6 +114,86 @@ export function SongCard({ song, className = "", onPlay, playlist }: SongCardPro
         }
     }
 
+    const handleDownloadSong = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+
+        // Kiểm tra đăng nhập
+        if (!user) {
+            toast({
+                title: "Cần đăng nhập",
+                description: "Vui lòng đăng nhập để tải bài hát nghe offline.",
+                variant: "destructive",
+            })
+            return
+        }
+
+        // Kiểm tra nếu bài hát đã tải xuống hoàn tất
+        if (isAlreadyDownloaded) {
+            toast({
+                title: "Đã tải xuống",
+                description: `Bài hát "${song.title}" đã được tải xuống.`,
+            })
+            return
+        }
+
+        // Nếu đang trong quá trình tải xuống, hiển thị thông báo
+        if (downloadStatus === 'PENDING' || downloadStatus === 'DOWNLOADING') {
+            toast({
+                title: "Đang tải xuống",
+                description: `Bài hát "${song.title}" đang được tải xuống.`,
+            })
+            return
+        }
+
+        // Nếu đã tải xuống nhưng thất bại, cho phép tải lại
+        if (downloadStatus === 'FAILED') {
+            // Xóa tải xuống cũ trước khi tải lại
+            if (songDownload) {
+                await deleteDownload(songDownload.id)
+            }
+        }
+
+        // Bắt đầu tải xuống mới
+        setIsDownloading(true)
+        try {
+            const result = await downloadSong(song.id)
+            toast({
+                title: "Tải xuống thành công",
+                description: `Bài hát "${song.title}" đã được tải xuống thành công. Bạn có thể nghe offline.`,
+            })
+        } catch (error) {
+            console.error("Lỗi khi tải xuống bài hát:", error)
+            toast({
+                title: "Lỗi tải xuống",
+                description: "Không thể tải xuống bài hát. Vui lòng thử lại sau.",
+                variant: "destructive",
+            })
+        } finally {
+            setIsDownloading(false)
+        }
+    }
+
+    const handleDeleteDownload = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+
+        if (!songDownload) return
+
+        try {
+            await deleteDownload(songDownload.id)
+            toast({
+                title: "Đã xóa",
+                description: `Đã xóa bài hát "${song.title}" khỏi danh sách tải xuống.`,
+            })
+        } catch (error) {
+            console.error("Lỗi khi xóa bài hát tải xuống:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể xóa bài hát. Vui lòng thử lại sau.",
+                variant: "destructive",
+            })
+        }
+    }
+
     return (
         <Card className={`group bg-zinc-900/40 hover:bg-zinc-800/80 transition border-none p-4 ${className}`}>
             <div className="space-y-3">
@@ -134,7 +222,7 @@ export function SongCard({ song, className = "", onPlay, playlist }: SongCardPro
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-800 text-white">
                                 <DropdownMenuItem
-                                    className="cursor-pointer hover:bg-zinc-800"
+                                    className="cursor-pointer hover:bg-zinc-800 font-medium"
                                     onClick={handleAddToQueue}
                                 >
                                     {isCurrentlyPlaying ? (
@@ -151,6 +239,34 @@ export function SongCard({ song, className = "", onPlay, playlist }: SongCardPro
                                         <>
                                             <PlusCircle className="mr-2 h-4 w-4" />
                                             <span>Thêm vào hàng đợi</span>
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-zinc-800" />
+                                <DropdownMenuItem
+                                    className="cursor-pointer hover:bg-zinc-800 font-medium"
+                                    onClick={handleDownloadSong}
+                                    disabled={isDownloading || !user}
+                                >
+                                    {isAlreadyDownloaded ? (
+                                        <>
+                                            <Check className="mr-2 h-4 w-4 text-green-500" />
+                                            <span className="text-green-500">Đã tải xuống</span>
+                                        </>
+                                    ) : downloadStatus === 'PENDING' || downloadStatus === 'DOWNLOADING' ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            <span>Đang tải xuống... {songDownload?.progress ? `${songDownload.progress}%` : ''}</span>
+                                        </>
+                                    ) : downloadStatus === 'FAILED' ? (
+                                        <>
+                                            <X className="mr-2 h-4 w-4 text-red-500" />
+                                            <span className="text-red-500">Tải xuống thất bại - Thử lại</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            <span>Tải xuống nghe offline</span>
                                         </>
                                     )}
                                 </DropdownMenuItem>

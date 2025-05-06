@@ -4,16 +4,25 @@ import { ReactNode, useState, useCallback, useEffect } from "react"
 import { PlayerContext } from "./PlayerContext"
 import { LoginPromptAlert } from "@/components/ui/LoginPromptAlert"
 import { usePlayer } from "./PlayerContext"
-import { SongType } from "@/components/music/SongCard"
+import { SongType, PlayerContextType } from "./PlayerContext"
 import { toast } from "@/components/ui/use-toast"
+import postmanApi from "@/lib/api/postman"
+
+// Cache URL để cải thiện hiệu suất
+const urlCache = new Map<string, string>();
 
 // Hàm xử lý URL cho file âm thanh và hình ảnh
 const getDirectMediaUrl = (url: string | undefined | null) => {
     if (!url) return "/placeholder.jpg";
 
+    // Kiểm tra cache trước
+    if (urlCache.has(url)) {
+        return urlCache.get(url)!;
+    }
+
     // Nếu là URL đầy đủ, trả về nguyên bản
     if (url.startsWith('http')) {
-        // console.log("URL đầy đủ:", url);
+        urlCache.set(url, url);
         return url;
     }
 
@@ -27,16 +36,17 @@ const getDirectMediaUrl = (url: string | undefined | null) => {
 
         // Sử dụng domain backend của server Nginx
         const fullUrl = `https://spotifybackend.shop${encodedPath.startsWith('/') ? '' : '/'}${encodedPath}`;
-        // console.log("URL sau khi xử lý:", fullUrl);
 
-        // Ghi chú: URL này có thể truy cập trực tiếp không cần token
-        // Token chỉ được sử dụng để ghi nhận lượt phát trong postmanApi.music.playSong()
+        // Lưu vào cache
+        urlCache.set(url, fullUrl);
 
         return fullUrl;
     } catch (error) {
         console.error("Lỗi khi xử lý URL:", error);
         // Nếu có lỗi, vẫn trả về URL gốc
-        return `https://spotifybackend.shop${url.startsWith('/') ? '' : '/'}${url}`;
+        const fallbackUrl = `https://spotifybackend.shop${url.startsWith('/') ? '' : '/'}${url}`;
+        urlCache.set(url, fallbackUrl);
+        return fallbackUrl;
     }
 }
 
@@ -99,6 +109,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const play = useCallback((song: SongType, songs?: SongType[]) => {
+        // Kiểm tra nếu đã đang phát bài hát này, không làm gì cả
+        if (currentSong?.id === song.id && isPlaying) {
+            return;
+        }
+
         // Cập nhật URL trực tiếp cho file âm thanh
         const processedSong = {
             ...song,
@@ -132,7 +147,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                 setCurrentIndex(0);
             } else {
                 setPlaylist(processedSongs);
-            // Tìm index của bài hát trong danh sách
+                // Tìm index của bài hát trong danh sách
                 const songIndex = processedSongs.findIndex(s => s.id === song.id);
                 setCurrentIndex(songIndex !== -1 ? songIndex : 0);
             }
@@ -143,8 +158,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             setCurrentIndex(0);
         }
 
+        // Đánh dấu là đang phát và ghi nhận lượt phát
         setIsPlaying(true);
-    }, [isShuffle, shuffleArray]);
+
+        // Ghi nhận lượt phát ngay lập tức
+        if (song.id) {
+            try {
+                // Không đợi kết quả trả về để tránh làm chậm việc phát nhạc
+                postmanApi.music.playSong(String(song.id))
+                    .then(() => console.log("Ghi nhận lượt phát thành công"))
+                    .catch(err => console.error("Lỗi ghi nhận lượt phát:", err));
+            } catch (error) {
+                console.error("Lỗi khi ghi nhận lượt phát:", error);
+            }
+        }
+    }, [currentSong, isPlaying, isShuffle, shuffleArray]);
 
     const pause = useCallback(() => {
         // Chỉ thay đổi trạng thái isPlaying, không thay đổi bất kỳ thông tin nào khác

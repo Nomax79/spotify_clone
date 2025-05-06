@@ -1,11 +1,14 @@
 "use client"
 
 import Image from "next/image"
-import { Play, Heart, MoreHorizontal, PlusCircle, ListMusic, CheckCircle } from "lucide-react"
+import { Play, Heart, MoreHorizontal, PlusCircle, ListMusic, CheckCircle, Download, Check, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SongType } from "./SongCard"
 import { usePlayer } from "@/components/player/PlayerContext"
+import { useOffline } from "@/context/offline-context"
+import { useAuth } from "@/context/auth-context"
 import { toast } from "@/components/ui/use-toast"
+import { useState } from "react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -32,8 +35,16 @@ export function SongRow({
     isActive = false
 }: SongRowProps) {
     const { play, currentSong, isPlaying, togglePlay, addToQueue, playlist: currentPlaylist } = usePlayer()
+    const { user } = useAuth()
+    const { isDownloaded, downloadSong, deleteDownload, getDownloadById } = useOffline()
+    const [isDownloading, setIsDownloading] = useState(false)
 
     const isCurrentSong = currentSong?.id === song.id
+
+    // Lấy trạng thái tải xuống của bài hát
+    const songDownload = getDownloadById(song.id)
+    const isAlreadyDownloaded = isDownloaded(song.id)
+    const downloadStatus = songDownload?.status || null
 
     // Kiểm tra xem bài hát đã có trong danh sách phát chưa (loại trừ bài hát đang phát)
     const isInQueue = currentPlaylist.some(item => item.id === song.id && item.id !== currentSong?.id)
@@ -97,6 +108,86 @@ export function SongRow({
                 description: "Không thể thêm bài hát vào hàng đợi. Vui lòng thử lại sau.",
                 variant: "destructive",
             });
+        }
+    }
+
+    const handleDownloadSong = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+
+        // Kiểm tra đăng nhập
+        if (!user) {
+            toast({
+                title: "Cần đăng nhập",
+                description: "Vui lòng đăng nhập để tải bài hát nghe offline.",
+                variant: "destructive",
+            })
+            return
+        }
+
+        // Kiểm tra nếu bài hát đã tải xuống hoàn tất
+        if (isAlreadyDownloaded) {
+            toast({
+                title: "Đã tải xuống",
+                description: `Bài hát "${song.title}" đã được tải xuống.`,
+            })
+            return
+        }
+
+        // Nếu đang trong quá trình tải xuống, hiển thị thông báo
+        if (downloadStatus === 'PENDING' || downloadStatus === 'DOWNLOADING') {
+            toast({
+                title: "Đang tải xuống",
+                description: `Bài hát "${song.title}" đang được tải xuống.`,
+            })
+            return
+        }
+
+        // Nếu đã tải xuống nhưng thất bại, cho phép tải lại
+        if (downloadStatus === 'FAILED') {
+            // Xóa tải xuống cũ trước khi tải lại
+            if (songDownload) {
+                await deleteDownload(songDownload.id)
+            }
+        }
+
+        // Bắt đầu tải xuống mới
+        setIsDownloading(true)
+        try {
+            const result = await downloadSong(song.id)
+            toast({
+                title: "Tải xuống thành công",
+                description: `Bài hát "${song.title}" đã được tải xuống thành công. Bạn có thể nghe offline.`,
+            })
+        } catch (error) {
+            console.error("Lỗi khi tải xuống bài hát:", error)
+            toast({
+                title: "Lỗi tải xuống",
+                description: "Không thể tải xuống bài hát. Vui lòng thử lại sau.",
+                variant: "destructive",
+            })
+        } finally {
+            setIsDownloading(false)
+        }
+    }
+
+    const handleDeleteDownload = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+
+        if (!songDownload) return
+
+        try {
+            await deleteDownload(songDownload.id)
+            toast({
+                title: "Đã xóa",
+                description: `Đã xóa bài hát "${song.title}" khỏi danh sách tải xuống.`,
+            })
+        } catch (error) {
+            console.error("Lỗi khi xóa bài hát tải xuống:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể xóa bài hát. Vui lòng thử lại sau.",
+                variant: "destructive",
+            })
         }
     }
 
@@ -213,6 +304,46 @@ export function SongRow({
                             <ListMusic className="mr-2 h-4 w-4" />
                             <span>Thêm vào playlist</span>
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-zinc-800" />
+                        {/* Nút tải xuống offline */}
+                        {isAlreadyDownloaded ? (
+                            <DropdownMenuItem
+                                className="cursor-pointer hover:bg-zinc-800"
+                                onClick={handleDeleteDownload}
+                            >
+                                <Check className="mr-2 h-4 w-4 text-green-500" />
+                                <span>Đã tải xuống</span>
+                            </DropdownMenuItem>
+                        ) : downloadStatus === 'PENDING' || downloadStatus === 'DOWNLOADING' ? (
+                            <DropdownMenuItem
+                                className="cursor-pointer hover:bg-zinc-800"
+                                disabled
+                            >
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <span>Đang tải xuống... {songDownload?.progress ? `${songDownload.progress}%` : ''}</span>
+                            </DropdownMenuItem>
+                        ) : downloadStatus === 'FAILED' ? (
+                            <DropdownMenuItem
+                                className="cursor-pointer hover:bg-zinc-800"
+                                onClick={handleDownloadSong}
+                            >
+                                <X className="mr-2 h-4 w-4 text-red-500" />
+                                <span>Tải xuống thất bại - Thử lại</span>
+                            </DropdownMenuItem>
+                        ) : (
+                            <DropdownMenuItem
+                                className="cursor-pointer hover:bg-zinc-800"
+                                onClick={handleDownloadSong}
+                                disabled={isDownloading || !user}
+                            >
+                                {isDownloading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Download className="mr-2 h-4 w-4" />
+                                )}
+                                <span>Tải xuống nghe offline</span>
+                            </DropdownMenuItem>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

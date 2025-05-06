@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { Play, Pause, SkipBack, SkipForward, Volume, VolumeX, Repeat, Shuffle, Heart, ListMusic, Maximize2, XCircle, Trash2 } from "lucide-react"
+import { Play, Pause, SkipBack, SkipForward, Volume, VolumeX, Repeat, Shuffle, Heart, ListMusic, Maximize2, XCircle, Trash2, Download } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -35,6 +35,7 @@ export function PlayerBar() {
     const [isMuted, setIsMuted] = useState(false)
     const [showQueue, setShowQueue] = useState(false)
     const [isLiked, setIsLiked] = useState(false)
+    const [downloading, setDownloading] = useState(false)
 
     const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -236,8 +237,18 @@ export function PlayerBar() {
     }
 
     const handlePlaySong = (song: SongType, index: number) => {
-        // Nếu bài hát đã đang phát, không làm gì
-        if (currentSong?.id === song.id) return;
+        // Nếu bài hát đã đang phát, chuyển sang trạng thái tạm dừng
+        if (currentSong?.id === song.id && isPlaying) {
+            togglePlay();
+            return;
+        }
+
+        // Luôn ghi nhận lượt phát ngay khi bắt đầu phát
+        if (song.id) {
+            postmanApi.music.playSong(String(song.id))
+                .then(() => console.log("Ghi nhận lượt phát thành công"))
+                .catch(err => console.error("Lỗi ghi nhận lượt phát:", err));
+        }
 
         // Cắt danh sách từ vị trí index để phát
         const remainingPlaylist = playlist.slice(index);
@@ -258,6 +269,31 @@ export function PlayerBar() {
             });
         }
     }
+
+    const handleDownload = async () => {
+        if (!currentSong) return;
+
+        try {
+            setDownloading(true);
+
+            // Gọi API để tải xuống bài hát
+            await postmanApi.offline.downloadSong(currentSong.id);
+
+            toast({
+                title: "Đã thêm vào tải xuống",
+                description: `Bài hát "${currentSong.title}" đã được thêm vào danh sách tải xuống.`,
+            });
+        } catch (error) {
+            console.error("Lỗi khi tải bài hát:", error);
+            toast({
+                title: "Lỗi",
+                description: "Không thể tải bài hát. Vui lòng thử lại sau.",
+                variant: "destructive",
+            });
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     const formatTime = (time: number) => {
         if (isNaN(time)) return "0:00"
@@ -304,6 +340,15 @@ export function PlayerBar() {
                         className={`text-zinc-400 hover:text-white ${isLiked ? 'text-green-500' : ''}`}
                     >
                         <Heart size={20} className={isLiked ? 'fill-green-500' : ''} />
+                    </Button>
+                    <Button
+                        onClick={handleDownload}
+                        variant="ghost"
+                        size="icon"
+                        className={`text-zinc-400 hover:text-white ${downloading ? 'text-blue-500' : ''}`}
+                        disabled={downloading}
+                    >
+                        <Download size={20} className={downloading ? 'animate-pulse' : ''} />
                     </Button>
                 </div>
 

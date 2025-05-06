@@ -375,131 +375,6 @@ export class AccountsCollection extends ApiRequest {
   }
 }
 
-// Collection cho Chat API
-export class ChatCollection extends ApiRequest {
-  // Chat API v1 mới
-  getMessages(username: string) {
-    return this.get(`/api/v1/chat/messages/${username}/`);
-  }
-
-  getConversations() {
-    return this.get(`/api/v1/chat/conversations/`);
-  }
-
-  getRecentConversations(limit = 10) {
-    return this.get(`/api/v1/chat/recent-conversations/?limit=${limit}`);
-  }
-
-  getUnreadCount() {
-    return this.get(`/api/v1/chat/unread-count/`);
-  }
-
-  markAsRead(username: string) {
-    return this.post(`/api/v1/chat/mark-read/${username}/`);
-  }
-
-  // Quản lý kết nối người dùng
-  getConnections() {
-    return this.get(`/api/v1/accounts/connections/`);
-  }
-
-  sendConnectionRequest(userId: string) {
-    return this.post(`/api/v1/accounts/connection-request/`, {
-      user_id: userId,
-    });
-  }
-
-  acceptConnection(userId: string) {
-    return this.post(`/api/v1/accounts/accept-connection/`, {
-      user_id: userId,
-    });
-  }
-
-  declineConnection(userId: string) {
-    return this.post(`/api/v1/accounts/decline-connection/`, {
-      user_id: userId,
-    });
-  }
-
-  blockUser(userId: string) {
-    return this.post(`/api/v1/accounts/block-user/`, { user_id: userId });
-  }
-
-  unblockUser(userId: string) {
-    return this.post(`/api/v1/accounts/unblock-user/`, { user_id: userId });
-  }
-
-  // API cũ (để tương thích ngược)
-  getLegacyMessages(params?: any) {
-    return this.get("/api/chat/messages/", params);
-  }
-
-  getLegacyMessage(id: string) {
-    return this.get(`/api/chat/messages/${id}/`);
-  }
-
-  sendLegacyMessage(data: any) {
-    return this.post("/api/chat/messages/", data);
-  }
-
-  getLegacyConversations() {
-    return this.get("/api/chat/conversations/");
-  }
-
-  getLegacyConversation(userId: string) {
-    return this.get(`/api/chat/conversations/${userId}/`);
-  }
-
-  reportMessage(data: any) {
-    return this.post("/api/chat/reports/", data);
-  }
-
-  // Admin API
-  getAllMessages(params?: any) {
-    return this.get("/api/admin/chat/messages/", params);
-  }
-
-  getAdminMessage(id: string) {
-    return this.get(`/api/admin/chat/messages/${id}/`);
-  }
-
-  getReports(params?: any) {
-    return this.get("/api/admin/chat/reports/", params);
-  }
-
-  getReportDetail(id: string) {
-    return this.get(`/api/admin/chat/reports/${id}/`);
-  }
-
-  updateReportStatus(id: string, data: any) {
-    return this.patch(`/api/admin/chat/reports/${id}/`, data);
-  }
-
-  getReportStatistics() {
-    return this.get("/api/admin/chat/reports/statistics/");
-  }
-
-  getPendingReports() {
-    return this.get("/api/admin/chat/reports/pending/");
-  }
-
-  getChatRestrictions() {
-    return this.get("/api/admin/chat/restrictions/");
-  }
-
-  createChatRestriction(data: any) {
-    return this.post("/api/admin/chat/restrictions/", data);
-  }
-
-  updateChatRestriction(id: string, data: any) {
-    return this.patch(`/api/admin/chat/restrictions/${id}/`, data);
-  }
-
-  getUserChatStats(userId: string) {
-    return this.get(`/api/admin/chat/user-stats/${userId}/`);
-  }
-}
-
 // Collection cho Music API
 export class MusicCollection extends ApiRequest {
   // Genre cache
@@ -757,7 +632,6 @@ export class MusicCollection extends ApiRequest {
 export const postmanApi = {
   auth: new AuthCollection(),
   accounts: new AccountsCollection(),
-  chat: new ChatCollection(),
   music: new MusicCollection(),
 };
 

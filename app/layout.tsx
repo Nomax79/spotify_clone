@@ -3,12 +3,16 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/context/auth-context";
-import { ChatProvider } from "@/context/chat-context";
+import { OfflineProvider } from "@/context/offline-context";
 import { Toaster } from "@/components/ui/toaster";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { PlayerBar } from "@/components/player/PlayerBar";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap', // Cải thiện hiển thị font
+  preload: true,   // Preload font
+});
 
 export const metadata: Metadata = {
   title: {
@@ -20,14 +24,17 @@ export const metadata: Metadata = {
   icons: [
     {
       rel: 'icon',
-      url: '/spotify-logo.png', // Đường dẫn đến file icon của bạn trong thư mục public
+      url: '/spotify-logo.png',
     },
-    // Bạn có thể thêm các icon khác nhau cho các mục đích khác nhau
-    // {
-    //   rel: 'apple-touch-icon',
-    //   url: '/apple-icon.png',
-    //   sizes: '180x180',
-    // },
+  ],
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+  },
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: '#121212' },
   ],
 };
 
@@ -38,7 +45,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <head>
+        <link
+          rel="preconnect"
+          href="https://spotifybackend.shop"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/spotify-logo.png"
+          as="image"
+        />
+      </head>
+      <body className={`${inter.className} antialiased`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -46,7 +65,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <ChatProvider>
+            <OfflineProvider>
               <PlayerProvider>
                 <main className="pb-24">
                   {children}
@@ -54,7 +73,7 @@ export default function RootLayout({
                 <PlayerBar />
               </PlayerProvider>
               <Toaster />
-            </ChatProvider>
+            </OfflineProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

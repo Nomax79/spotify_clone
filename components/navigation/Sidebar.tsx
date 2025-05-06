@@ -14,6 +14,7 @@ import {
     ChevronLeft,
     Pin,
     MessageSquare,
+    Download,
 } from "lucide-react"
 
 // Các liên kết trong sidebar
@@ -32,6 +33,11 @@ export const SIDEBAR_LINKS = [
         label: "Chat",
         href: "/chat",
         icon: <MessageSquare className="h-6 w-6" />,
+    },
+    {
+        label: "Offline",
+        href: "/offline",
+        icon: <Download className="h-6 w-6" />,
     },
     // ... existing code ...
 ] 

@@ -98,16 +98,6 @@ export default function HomePage() {
           </svg>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" className="text-white hover:text-white hover:bg-transparent">
-            Premium
-          </Button>
-          <Button variant="ghost" className="text-white hover:text-white hover:bg-transparent">
-            Hỗ trợ
-          </Button>
-          <Button variant="ghost" className="text-white hover:text-white hover:bg-transparent">
-            Tải xuống
-          </Button>
-          <div className="h-6 w-px bg-white/30 mx-2"></div>
           <Link href="/register">
             <Button variant="ghost" className="text-white hover:text-white hover:bg-transparent">
               Đăng ký
@@ -133,28 +123,7 @@ export default function HomePage() {
                 Tìm kiếm
               </Button>
             </div>
-            <div className="bg-zinc-900 rounded-lg p-4">
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-bold">Thư viện</h3>
-                  <Plus className="h-5 w-5 text-white/70" />
-                </div>
-                <div className="bg-zinc-800 rounded-lg p-4">
-                  <h4 className="font-bold mb-2">Tạo danh sách phát đầu tiên của bạn</h4>
-                  <p className="text-sm text-white/70 mb-4">Rất dễ! Chúng tôi sẽ giúp bạn</p>
-                  <Button className="bg-white text-black hover:bg-white/90 rounded-full text-sm">
-                    Tạo danh sách phát
-                  </Button>
-                </div>
-                <div className="bg-zinc-800 rounded-lg p-4">
-                  <h4 className="font-bold mb-2">Hãy cùng tìm và theo dõi một số podcast</h4>
-                  <p className="text-sm text-white/70 mb-4">Chúng tôi sẽ cập nhật cho bạn thông tin về các tập mới</p>
-                  <Button className="bg-white text-black hover:bg-white/90 rounded-full text-sm">
-                    Duyệt xem podcast
-                  </Button>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
 
@@ -162,9 +131,6 @@ export default function HomePage() {
         <div className="flex-1 bg-gradient-to-b from-zinc-900 to-black p-6 overflow-auto">
           <h2 className="text-2xl font-bold mb-4 flex justify-between items-center">
             Bài hát thịnh hành trong 7 ngày qua
-            <Link href="/songs" className="text-white/70 hover:text-white text-sm">
-              Hiển thị tất cả <ChevronRight className="h-4 w-4" />
-            </Link>
           </h2>
 
           {loading ? (
@@ -193,9 +159,6 @@ export default function HomePage() {
 
           <h2 className="text-2xl font-bold mb-4 flex justify-between items-center mt-8">
             Nghệ sĩ phổ biến
-            <Link href="/artists" className="text-white/70 hover:text-white text-sm">
-              Hiển thị tất cả <ChevronRight className="h-4 w-4" />
-            </Link>
           </h2>
 
           {loading ? (

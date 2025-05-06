@@ -14,16 +14,21 @@ import {
     Radio,
     Mic2,
     LayoutGrid,
-    MessageSquare
+    MessageSquare,
+    ShieldAlert,
+    LineChart
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import { useAuth } from "@/context/auth-context"
 
 export function Sidebar() {
     const pathname = usePathname()
     const [showPlaylists, setShowPlaylists] = useState(true)
     const [showExplore, setShowExplore] = useState(true)
+    const [showAdmin, setShowAdmin] = useState(true)
+    const { user, isAdmin } = useAuth()
 
     return (
         <div className="w-full h-full bg-black flex flex-col overflow-hidden">
@@ -73,20 +78,6 @@ export function Sidebar() {
                             </Link>
                         </li>
                         <li>
-                            <Link href="/chat">
-                                <Button
-                                    variant="ghost"
-                                    className={cn(
-                                        "w-full justify-start text-zinc-400 hover:text-white",
-                                        pathname === "/chat" && "text-white"
-                                    )}
-                                >
-                                    <MessageSquare className="h-5 w-5 mr-3" />
-                                    Chat
-                                </Button>
-                            </Link>
-                        </li>
-                        <li>
                             <Link href="/library">
                                 <Button
                                     variant="ghost"
@@ -102,6 +93,39 @@ export function Sidebar() {
                         </li>
                     </ul>
                 </nav>
+
+                {/* Phần Admin */}
+                {isAdmin && (
+                    <div className="mt-6 px-4">
+                        <div className="py-2 flex items-center justify-between">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-zinc-400 hover:text-white"
+                                onClick={() => setShowAdmin(!showAdmin)}
+                            >
+                                <p className="font-semibold">QUẢN TRỊ</p>
+                            </Button>
+                        </div>
+
+                        {showAdmin && (
+                            <div className="space-y-1">
+                                <Link href="/admin/dashboard">
+                                    <Button
+                                        variant="ghost"
+                                        className={cn(
+                                            "w-full justify-start text-zinc-400 hover:text-white",
+                                            pathname === "/admin/dashboard" && "text-white"
+                                        )}
+                                    >
+                                        <LineChart className="h-5 w-5 mr-3" />
+                                        Thống kê
+                                    </Button>
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="mt-6 px-4">
                     <div className="py-2 flex items-center justify-between">
