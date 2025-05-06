@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/use-toast"
 import postmanApi from "@/lib/api/postman"
 import { SongType } from "@/components/music/SongCard"
 import { api } from "@/lib/api"
+import { useFavorite } from "@/context/favorite-context"
 
 export function PlayerBar() {
     const {
@@ -23,19 +24,19 @@ export function PlayerBar() {
         toggleShuffle,
         repeatMode,
         toggleRepeat,
-        likeSong,
         addToQueue,
         removeFromQueue,
         clearQueue,
         play
     } = usePlayer()
 
+    const { isFavorite, toggleFavorite } = useFavorite()
+
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
     const [volume, setVolume] = useState(0.7)
     const [isMuted, setIsMuted] = useState(false)
     const [showQueue, setShowQueue] = useState(false)
-    const [isLiked, setIsLiked] = useState(false)
     const [downloading, setDownloading] = useState(false)
 
     const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -259,16 +260,8 @@ export function PlayerBar() {
     const handleLike = async () => {
         if (!currentSong) return;
 
-        const success = await likeSong(currentSong.id);
-        if (success) {
-            setIsLiked(!isLiked);
-
-            // Hiển thị thông báo
-            toast({
-                title: isLiked ? "Đã xóa khỏi yêu thích" : "Đã thêm vào yêu thích",
-                description: `Bài hát "${currentSong.title}" đã được ${isLiked ? 'xóa khỏi' : 'thêm vào'} danh sách yêu thích.`,
-            });
-        }
+        // Sử dụng hook toggleFavorite từ FavoriteContext
+        await toggleFavorite(currentSong);
     }
 
     const handleDownload = async () => {
@@ -278,7 +271,7 @@ export function PlayerBar() {
             setDownloading(true);
 
             // Gọi API để tải xuống bài hát
-            await api.offline.downloadSong(currentSong.id);
+            await api.songs.downloadSong(currentSong.id);
 
             toast({
                 title: "Đã thêm vào tải xuống",
@@ -338,9 +331,9 @@ export function PlayerBar() {
                         onClick={handleLike}
                         variant="ghost"
                         size="icon"
-                        className={`text-zinc-400 hover:text-white ${isLiked ? 'text-green-500' : ''}`}
+                        className={`text-zinc-400 hover:text-white ${currentSong && isFavorite(currentSong.id) ? 'text-green-500' : ''}`}
                     >
-                        <Heart size={20} className={isLiked ? 'fill-green-500' : ''} />
+                        <Heart size={20} className={currentSong && isFavorite(currentSong.id) ? 'fill-green-500' : ''} />
                     </Button>
                     <Button
                         onClick={handleDownload}

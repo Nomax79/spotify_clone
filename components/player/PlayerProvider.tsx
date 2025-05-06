@@ -357,6 +357,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsLoginPromptOpen(false);
     }, []);
 
+    /**
+     * Lấy URL để phát trực tuyến bài hát
+     * @param songId ID của bài hát
+     * @returns URL để phát trực tuyến
+     */
+    const getStreamUrl = (songId: number | string): string => {
+        // Kiểm tra nếu API URL bị thiếu
+        if (!process.env.NEXT_PUBLIC_API_URL) {
+            return '';
+        }
+
+        return `${process.env.NEXT_PUBLIC_API_URL}/api/v1/music/songs/${songId}/stream/`;
+    };
+
     const providerValue = {
         currentSong,
         playlist,
@@ -379,7 +393,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         likeSong,
         closeLoginPrompt,
         checkAuthBeforePlaying,
-        getDirectMediaUrl
+        getDirectMediaUrl,
+        getStreamUrl
     };
 
     return (

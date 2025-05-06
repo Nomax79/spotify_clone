@@ -130,4 +130,100 @@ export class SongService extends ApiRequest {
       type: "song",
     });
   }
+
+  /**
+   * Tải xuống bài hát
+   * @param songId ID bài hát
+   * @returns Stream file nhạc để tải xuống
+   */
+  async downloadSong(songId: string | number) {
+    console.log(`Tải xuống bài hát ID: ${songId}`);
+    return this.get(
+      `/api/v1/music/songs/${songId}/download/`,
+      {},
+      {
+        responseType: "blob",
+      }
+    );
+  }
+
+  /**
+   * Tải xuống bài hát trực tiếp và lưu vào thiết bị
+   * @param songId ID bài hát
+   * @param songTitle Tiêu đề bài hát
+   * @param artistName Tên nghệ sĩ
+   * @returns Kết quả tải xuống
+   */
+  async directDownload(
+    songId: string | number,
+    songTitle?: string,
+    artistName?: string
+  ) {
+    try {
+      console.log(`Bắt đầu tải xuống bài hát: ${songTitle || songId}`);
+
+      // Kiểm tra token trước khi tải xuống
+      let token = null;
+      if (typeof window !== "undefined") {
+        token = localStorage.getItem("spotify_token");
+        if (!token) {
+          console.error("Không tìm thấy access token. Vui lòng đăng nhập lại.");
+          throw new Error("Unauthorized: Không tìm thấy token truy cập");
+        }
+        console.log(`Sử dụng token: ${token.substring(0, 15)}...`);
+      }
+
+      const response = (await this.downloadSong(songId)) as Blob;
+      console.log("Nhận được response blob:", response);
+
+      // Tạo tên file từ thông tin bài hát hoặc sử dụng ID nếu không có
+      const filename = songTitle
+        ? `${songTitle}${artistName ? ` - ${artistName}` : ""}.mp3`
+        : `song-${songId}.mp3`;
+
+      // Tạo URL đối tượng từ blob
+      const url = window.URL.createObjectURL(response);
+
+      // Tạo link tải xuống
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+
+      // Kích hoạt tải xuống
+      link.click();
+
+      // Dọn dẹp
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+
+      console.log(`Tải xuống bài hát thành công: ${filename}`);
+      return { success: true, filename };
+    } catch (error) {
+      console.error("Lỗi khi tải xuống bài hát:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Phát trực tuyến bài hát
+   * @param songId ID bài hát
+   * @param range Range header cho phát trực tuyến
+   * @returns Stream audio
+   */
+  async streamSong(songId: string | number, range?: string) {
+    const headers: Record<string, string> = {};
+    if (range) {
+      headers["Range"] = range;
+    }
+
+    return this.get(
+      `/api/v1/music/songs/${songId}/stream/`,
+      {},
+      {
+        headers,
+        responseType: "blob",
+      }
+    );
+  }
 }

@@ -214,13 +214,18 @@ export function Sidebar() {
 
                     {showPlaylists && (
                         <div className="space-y-1 mt-2 text-sm">
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start text-zinc-400 hover:text-white px-2"
-                            >
-                                <Heart className="h-4 w-4 mr-3 text-rose-500" />
-                                Bài hát đã thích
-                            </Button>
+                            <Link href="/favorites">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "w-full justify-start text-zinc-400 hover:text-white px-2",
+                                        pathname === "/favorites" && "text-white"
+                                    )}
+                                >
+                                    <Heart className="h-4 w-4 mr-3 text-rose-500" />
+                                    Bài hát đã thích
+                                </Button>
+                            </Link>
                             <Button
                                 variant="ghost"
                                 className="w-full justify-start text-zinc-400 hover:text-white px-2"

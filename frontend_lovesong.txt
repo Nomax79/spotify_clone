@@ -1,0 +1,400 @@
+# FAVORITE SONGS API DOCUMENTATION
+Version: 1.0
+Last Updated: 2023-04-28
+
+## TỔNG QUAN
+
+API "Bài hát yêu thích" (Favorite Songs) cho phép người dùng:
+- Xem danh sách bài hát yêu thích của mình
+- Thêm bài hát vào danh sách yêu thích
+- Xóa bài hát khỏi danh sách yêu thích
+
+## CƠ CHẾ LƯU TRỮ DỮ LIỆU
+
+### Cấu trúc Model
+Chức năng sử dụng quan hệ nhiều-nhiều (ManyToMany) giữa User và Song:
+
+```python
+# accounts/models.py (User model)
+class User(AbstractUser):
+    # ...các trường khác
+    favorite_songs = models.ManyToManyField('music.Song', related_name='favorited_by', blank=True)
+```
+
+### Lược đồ Dữ liệu
+- Mỗi User có thể yêu thích nhiều Song
+- Mỗi Song có thể được yêu thích bởi nhiều User
+- Khi thêm vào yêu thích, trường likes_count trong Song tự động tăng
+
+## THÔNG TIN CHI TIẾT API
+
+### 1. LẤY DANH SÁCH BÀI HÁT YÊU THÍCH
+
+**Endpoint:** `/api/v1/music/favorites/`  
+**Method:** GET  
+**Yêu cầu xác thực:** JWT Token  
+
+#### Headers
+Authorization: Bearer <token>
+
+#### Response (200 OK)
+```json
+[
+  {
+    "id": 25,
+    "title": "Anh Đã Quen Với Cô Đơn",
+    "artist": "Soobin Hoàng Sơn",
+    "album": "The Playah",
+    "duration": 240,
+    "audio_file": "https://spotifybackend.shop/media/songs/2023/04/10/anh-da-quen-voi-co-don.mp3",
+    "cover_image": "https://spotifybackend.shop/media/covers/2023/04/10/soobin.jpg",
+    "genre": "Pop",
+    "likes_count": 156,
+    "play_count": 1250,
+    "uploaded_by": {
+      "id": 1,
+      "username": "admin",
+      "avatar": "https://spotifybackend.shop/media/avatars/admin.jpg"
+    },
+    "created_at": "2023-04-10T08:15:30Z",
+    "release_date": "2020-05-15",
+    "download_url": "https://spotifybackend.shop/api/v1/music/songs/25/download/",
+    "stream_url": "https://spotifybackend.shop/api/v1/music/songs/25/stream/"
+  },
+  // Các bài hát yêu thích khác
+]
+```
+
+### 2. THÊM BÀI HÁT VÀO DANH SÁCH YÊU THÍCH
+
+**Endpoint:** `/api/v1/music/favorites/`  
+**Method:** POST  
+**Yêu cầu xác thực:** JWT Token  
+
+#### Headers
+Authorization: Bearer <token>
+Content-Type: application/json
+
+#### Request Body
+```json
+{
+  "song_id": 25
+}
+```
+
+#### Response (201 Created)
+```json
+{
+  "status": "success"
+}
+```
+
+#### Response (400 Bad Request) - Bài hát đã có trong danh sách yêu thích
+```json
+{
+  "error": "Bài hát đã có trong danh sách yêu thích"
+}
+```
+
+#### Response (404 Not Found) - Bài hát không tồn tại
+```json
+{
+  "error": "Bài hát không tồn tại"
+}
+```
+
+### 3. XÓA BÀI HÁT KHỎI DANH SÁCH YÊU THÍCH
+
+**Endpoint:** `/api/v1/music/favorites/`  
+**Method:** DELETE  
+**Yêu cầu xác thực:** JWT Token  
+
+#### Headers
+Authorization: Bearer <token>
+Content-Type: application/json
+
+#### Request Body
+```json
+{
+  "song_id": 25
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "status": "success"
+}
+```
+
+#### Response (400 Bad Request) - Bài hát không có trong danh sách yêu thích
+```json
+{
+  "error": "Bài hát không có trong danh sách yêu thích"
+}
+```
+
+#### Response (404 Not Found) - Bài hát không tồn tại
+```json
+{
+  "error": "Bài hát không tồn tại"
+}
+```
+
+### 4. KIỂM TRA BÀI HÁT CÓ TRONG DANH SÁCH YÊU THÍCH KHÔNG
+
+Kiểm tra bài hát có trong danh sách yêu thích không thực hiện gián tiếp qua `SongViewSet`:
+
+**Endpoint:** `/api/v1/music/songs/<song_id>/like/`  
+**Method:** POST  
+**Yêu cầu xác thực:** JWT Token  
+
+#### Headers
+Authorization: Bearer <token>
+
+#### Response (200 OK) - Thêm vào/xóa khỏi yêu thích
+```json
+{
+  "status": "liked"
+}
+```
+hoặc
+```json
+{
+  "status": "unliked"
+}
+```
+
+## HƯỚNG DẪN TÍCH HỢP FRONTEND
+
+### 1. Lấy danh sách bài hát yêu thích
+
+```javascript
+// Fetch favorite songs
+async function fetchFavoriteSongs() {
+  try {
+    const response = await fetch('https://spotifybackend.shop/api/v1/music/favorites/', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to fetch favorites');
+    
+    const favoriteSongs = await response.json();
+    // Cập nhật UI với danh sách bài hát yêu thích
+    renderFavoriteSongs(favoriteSongs);
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    showErrorNotification('Không thể lấy danh sách bài hát yêu thích');
+  }
+}
+```
+
+### 2. Thêm bài hát vào danh sách yêu thích
+
+```javascript
+// Add song to favorites
+async function addToFavorites(songId) {
+  try {
+    const response = await fetch('https://spotifybackend.shop/api/v1/music/favorites/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ song_id: songId })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to add to favorites');
+    }
+    
+    // Cập nhật UI (thay đổi biểu tượng tim, hiển thị thông báo)
+    updateHeartIcon(songId, true);
+    showNotification('Đã thêm vào danh sách yêu thích');
+    
+    // Cập nhật số lượt thích
+    incrementLikeCount(songId);
+  } catch (error) {
+    console.error('Error adding to favorites:', error);
+    showErrorNotification(error.message);
+  }
+}
+```
+
+### 3. Xóa bài hát khỏi danh sách yêu thích
+
+```javascript
+// Remove song from favorites
+async function removeFromFavorites(songId) {
+  try {
+    const response = await fetch('https://spotifybackend.shop/api/v1/music/favorites/', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ song_id: songId })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to remove from favorites');
+    }
+    
+    // Cập nhật UI (thay đổi biểu tượng tim, hiển thị thông báo)
+    updateHeartIcon(songId, false);
+    showNotification('Đã xóa khỏi danh sách yêu thích');
+    
+    // Cập nhật số lượt thích
+    decrementLikeCount(songId);
+  } catch (error) {
+    console.error('Error removing from favorites:', error);
+    showErrorNotification(error.message);
+  }
+}
+```
+
+### 4. Toggle yêu thích (cách khác)
+
+```javascript
+// Toggle favorite status
+async function toggleFavorite(songId) {
+  try {
+    const response = await fetch(`https://spotifybackend.shop/api/v1/music/songs/${songId}/like/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error('Failed to toggle favorite status');
+    }
+    
+    const isLiked = data.status === 'liked';
+    
+    // Cập nhật UI
+    updateHeartIcon(songId, isLiked);
+    showNotification(isLiked ? 'Đã thêm vào yêu thích' : 'Đã xóa khỏi yêu thích');
+    
+    // Cập nhật số lượng like
+    updateLikeCount(songId, isLiked);
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+    showErrorNotification(error.message);
+  }
+}
+
+function updateLikeCount(songId, isLiked) {
+  const likeCountElement = document.querySelector(`#song-${songId} .like-count`);
+  if (likeCountElement) {
+    const currentCount = parseInt(likeCountElement.textContent);
+    likeCountElement.textContent = isLiked ? currentCount + 1 : currentCount - 1;
+  }
+}
+
+function updateHeartIcon(songId, isLiked) {
+  const heartIcon = document.querySelector(`#song-${songId} .heart-icon`);
+  if (heartIcon) {
+    if (isLiked) {
+      heartIcon.classList.add('liked');
+      heartIcon.innerHTML = '<i class="fas fa-heart"></i>'; // Biểu tượng tim đặc
+    } else {
+      heartIcon.classList.remove('liked');
+      heartIcon.innerHTML = '<i class="far fa-heart"></i>'; // Biểu tượng tim rỗng
+    }
+  }
+}
+```
+
+### 5. Kiểm tra trạng thái yêu thích khi render bài hát
+
+```javascript
+// Khi render một bài hát, thêm trạng thái yêu thích
+function renderSong(song, favorites) {
+  const isFavorite = favorites.some(favSong => favSong.id === song.id);
+  
+  return `
+    <div id="song-${song.id}" class="song-item">
+      <img src="${song.cover_image}" alt="${song.title}" />
+      <div class="song-info">
+        <h3>${song.title}</h3>
+        <p>${song.artist}</p>
+      </div>
+      <div class="song-actions">
+        <span class="like-count">${song.likes_count}</span>
+        <button class="heart-icon ${isFavorite ? 'liked' : ''}" onclick="toggleFavorite(${song.id})">
+          <i class="${isFavorite ? 'fas' : 'far'} fa-heart"></i>
+        </button>
+        <button onclick="playSong(${song.id})">
+          <i class="fas fa-play"></i>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Tải danh sách yêu thích và sau đó render danh sách bài hát
+async function loadSongsWithFavoriteStatus() {
+  // Fetch favorites first
+  const favorites = await fetch('https://spotifybackend.shop/api/v1/music/favorites/', {
+    headers: { 'Authorization': `Bearer ${getToken()}` }
+  }).then(res => res.json());
+  
+  // Then fetch songs
+  const songs = await fetch('https://spotifybackend.shop/api/v1/music/songs/', {
+    headers: { 'Authorization': `Bearer ${getToken()}` }
+  }).then(res => res.json());
+  
+  // Render songs with favorite status
+  const songsContainer = document.querySelector('#songs-container');
+  songsContainer.innerHTML = songs.map(song => renderSong(song, favorites)).join('');
+}
+```
+
+## LƯU Ý
+
+1. Khi một bài hát được thêm vào yêu thích:
+   - Trường `likes_count` của bài hát tự động tăng lên 1
+   - Một bản ghi được tạo trong bảng UserActivity với `activity_type='LIKE'`
+
+2. Khi một bài hát bị xóa khỏi yêu thích:
+   - Trường `likes_count` của bài hát tự động giảm đi 1
+
+3. Các bài hát yêu thích sẽ được sử dụng để đề xuất bài hát tương tự (tính năng đề xuất)
+
+## TIPS TĂNG HIỆU SUẤT
+
+1. Cache danh sách yêu thích ở client để không phải gọi API liên tục
+
+```javascript
+// Cache favorites in memory or localStorage
+let cachedFavorites = [];
+
+// Update cache on add/remove
+function updateFavoritesCache(songId, isAdding) {
+  if (isAdding) {
+    // Find song in songs list and add to cache
+    const song = allSongs.find(s => s.id === songId);
+    if (song) cachedFavorites.push(song);
+  } else {
+    // Remove from cache
+    cachedFavorites = cachedFavorites.filter(s => s.id !== songId);
+  }
+  
+  // Optionally update localStorage
+  localStorage.setItem('favoriteSongs', JSON.stringify(cachedFavorites));
+}
+```
+
+2. Sử dụng biến isFavorite trong state để tracking trạng thái yêu thích của mỗi bài hát
+
+3. Gọi API initial load để lấy danh sách favorite IDs và sử dụng để đánh dấu bài hát khi render

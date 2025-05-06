@@ -17,18 +17,25 @@ export class ApiRequest {
     method: string,
     endpoint: string,
     data?: any,
-    customHeaders?: Record<string, string>
+    customOptions?: {
+      headers?: Record<string, string>;
+      responseType?: string;
+    }
   ): Promise<T> {
     // Lấy token từ localStorage (nếu có)
     let token = null;
     if (typeof window !== "undefined") {
-      token = localStorage.getItem("spotify_token");
+      const storedToken = localStorage.getItem("spotify_token");
+      // Xác minh token hợp lệ
+      if (storedToken && storedToken.startsWith("ey")) {
+        token = storedToken;
+      }
     }
 
     // Chuẩn bị headers
     const headers: Record<string, string> = {
       ...API_CONFIG.defaultHeaders,
-      ...customHeaders,
+      ...(customOptions?.headers || {}),
     };
 
     // Thêm token vào header nếu có
@@ -66,17 +73,26 @@ export class ApiRequest {
     }
 
     try {
+      // Log request để debug
+      console.log(`API Request: ${method} ${url.toString()}`);
+      if (token) {
+        console.log(`Using token: ${token.substring(0, 15)}...`);
+      }
+
       // Thực hiện request
       const response = await fetch(url.toString(), options);
 
       // Xử lý refresh token nếu token hết hạn (401)
       if (response.status === 401 && token) {
+        console.log("Token hết hạn, đang thử refresh token...");
         const refreshed = await this.refreshToken();
         if (refreshed) {
+          console.log("Refresh token thành công, thử lại request...");
           // Thử lại request với token mới
-          return this.request<T>(method, endpoint, data, customHeaders);
+          return this.request<T>(method, endpoint, data, customOptions);
         } else {
           // Nếu refresh token thất bại, chuyển hướng về trang đăng nhập
+          console.log("Refresh token thất bại, đăng xuất người dùng...");
           if (typeof window !== "undefined") {
             localStorage.removeItem("spotify_token");
             localStorage.removeItem("spotify_refresh_token");
@@ -110,9 +126,16 @@ export class ApiRequest {
         throw error;
       }
 
-      // Parse JSON response
-      const result = await response.json();
-      return result as T;
+      // Xử lý response dựa vào loại dữ liệu được yêu cầu
+      if (customOptions?.responseType === "blob") {
+        // Trả về blob trực tiếp nếu responseType là blob
+        const blob = await response.blob();
+        return blob as unknown as T;
+      } else {
+        // Parse JSON response
+        const result = await response.json();
+        return result as T;
+      }
     } catch (error) {
       console.error("API request failed:", error);
       throw error;
@@ -149,8 +172,15 @@ export class ApiRequest {
   }
 
   // Các phương thức helper cho các loại request khác nhau
-  protected get<T>(endpoint: string, params?: any): Promise<T> {
-    return this.request<T>("GET", endpoint, params);
+  protected get<T>(
+    endpoint: string,
+    params?: any,
+    options?: {
+      headers?: Record<string, string>;
+      responseType?: string;
+    }
+  ): Promise<T> {
+    return this.request<T>("GET", endpoint, params, options);
   }
 
   protected post<T>(endpoint: string, data?: any): Promise<T> {

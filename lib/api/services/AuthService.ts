@@ -12,7 +12,7 @@ export class AuthService extends ApiRequest {
    * @returns Thông tin đăng nhập và token
    */
   async login(email: string, password: string): Promise<LoginResponse> {
-    const data = await this.post<LoginResponse>("/api/v1/auth/login/", {
+    const data = await this.post<LoginResponse>("/api/v1/auth/token/", {
       email,
       password,
     });

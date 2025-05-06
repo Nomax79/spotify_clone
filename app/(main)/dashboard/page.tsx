@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ListMusic } from "lucide-react"
 import postmanApi from "@/lib/api/postman"
 import { PlayButton } from "@/components/music/PlayButton"
-import { useOffline } from "@/context/offline-context"
+import { useDownload } from "@/context/offline-context"
 
 // Định nghĩa interface cho Artist
 interface Artist {
@@ -69,8 +69,8 @@ export default function DashboardPage() {
     const { user } = useAuth()
     const router = useRouter()
     const { toast } = useToast()
-    const { play, isPlaying, pause, resume, addToQueue, currentSong: playerCurrentSong, playlist: currentPlaylist } = usePlayer()
-    const { isDownloaded, downloadSong, deleteDownload, getDownloadById } = useOffline()
+    const { play, isPlaying, togglePlay, addToQueue, currentSong: playerCurrentSong, playlist: currentPlaylist } = usePlayer()
+    const { directDownload, isDownloading } = useDownload()
     const [trendingSongs, setTrendingSongs] = useState<CustomSong[]>([])
     const [recommendedSongs, setRecommendedSongs] = useState<CustomSong[]>([])
     const [playlists, setPlaylists] = useState<CustomPlaylist[]>([])
@@ -299,9 +299,9 @@ export default function DashboardPage() {
             if (playerCurrentSong && isSameId(playerCurrentSong.id, song.id)) {
                 // Toggle play/pause nếu đang phát bài hát đó
                 if (isPlaying) {
-                    pause();
+                    togglePlay();
                 } else {
-                    resume();
+                    togglePlay();
                 }
             } else {
                 // Ghi nhận lượt phát
@@ -339,6 +339,7 @@ export default function DashboardPage() {
     const handleDownloadSong = async (e: React.MouseEvent, song: CustomSong) => {
         e.stopPropagation();
 
+        // Kiểm tra đăng nhập
         if (!user) {
             toast({
                 title: "Yêu cầu đăng nhập",
@@ -347,21 +348,19 @@ export default function DashboardPage() {
             return;
         }
 
-        // Kiểm tra nếu bài hát đã tải xuống hoàn tất
-        if (isDownloaded(song.id)) {
+        // Kiểm tra token
+        const token = localStorage.getItem("spotify_token");
+        if (!token || !token.startsWith("ey")) {
             toast({
-                title: "Đã tải xuống",
-                description: `Bài hát "${song.title}" đã được tải xuống.`,
+                title: "Phiên đăng nhập hết hạn",
+                description: "Vui lòng đăng nhập lại để tải bài hát.",
+                variant: "destructive",
             });
             return;
         }
 
-        // Lấy thông tin tải xuống của bài hát
-        const songDownload = getDownloadById(song.id);
-        const downloadStatus = songDownload?.status || null;
-
-        // Nếu đang trong quá trình tải xuống, hiển thị thông báo
-        if (downloadStatus === 'PENDING' || downloadStatus === 'DOWNLOADING') {
+        // Kiểm tra nếu đang tải xuống
+        if (downloading[song.id]) {
             toast({
                 title: "Đang tải xuống",
                 description: `Bài hát "${song.title}" đang được tải xuống.`,
@@ -369,33 +368,42 @@ export default function DashboardPage() {
             return;
         }
 
-        // Nếu đã tải xuống nhưng thất bại, cho phép tải lại
-        if (downloadStatus === 'FAILED') {
-            // Xóa tải xuống cũ trước khi tải lại
-            if (songDownload) {
-                await deleteDownload(songDownload.id);
-            }
-        }
-
         try {
-            setDownloading({ ...downloading, [song.id]: true });
+            console.log(`Bắt đầu tải xuống bài hát: ${song.title} (ID: ${song.id})`);
+            setDownloading(prev => ({ ...prev, [song.id]: true }));
 
-            // Gọi API để tải xuống bài hát thông qua OfflineContext
-            await downloadSong(song.id);
+            // Lấy tên nghệ sĩ
+            const artistName = typeof song.artist === 'string'
+                ? song.artist
+                : song.artist.name;
+
+            // Gọi API tải xuống trực tiếp
+            await directDownload(song.id, song.title, artistName);
 
             toast({
                 title: "Tải xuống thành công",
-                description: `Bài hát "${song.title}" đã được tải xuống thành công. Bạn có thể nghe offline.`,
+                description: `Bài hát "${song.title}" đã được tải xuống thiết bị của bạn.`,
             });
         } catch (error) {
             console.error("Lỗi khi tải bài hát:", error);
+            let errorMessage = "Không thể tải bài hát. Vui lòng thử lại sau.";
+
+            // Kiểm tra lỗi cụ thể và hiển thị thông báo phù hợp
+            if (error instanceof Error) {
+                if (error.message.includes("Unauthorized") || error.message.includes("token")) {
+                    errorMessage = "Lỗi xác thực. Vui lòng đăng nhập lại.";
+                } else if (error.message.includes("network") || error.message.includes("fetch")) {
+                    errorMessage = "Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet.";
+                }
+            }
+
             toast({
-                title: "Lỗi",
-                description: "Không thể tải bài hát. Vui lòng thử lại sau.",
+                title: "Lỗi tải xuống",
+                description: errorMessage,
                 variant: "destructive",
             });
         } finally {
-            setDownloading({ ...downloading, [song.id]: false });
+            setDownloading(prev => ({ ...prev, [song.id]: false }));
         }
     };
 
@@ -403,14 +411,11 @@ export default function DashboardPage() {
     const handleDeleteDownload = async (e: React.MouseEvent, song: CustomSong) => {
         e.stopPropagation();
 
-        const songDownload = getDownloadById(song.id);
-        if (!songDownload) return;
-
         try {
-            await deleteDownload(songDownload.id);
+            // Hiển thị thông báo chức năng chưa được hỗ trợ
             toast({
-                title: "Đã xóa",
-                description: `Đã xóa bài hát "${song.title}" khỏi danh sách tải xuống.`,
+                title: "Tính năng đang phát triển",
+                description: "Chức năng xóa bài hát đã tải xuống sẽ được cập nhật trong phiên bản tiếp theo.",
             });
         } catch (error) {
             console.error("Lỗi khi xóa bài hát tải xuống:", error);
@@ -503,20 +508,10 @@ export default function DashboardPage() {
                                                     className="cursor-pointer hover:bg-zinc-800"
                                                     onClick={(e) => handleDownloadSong(e, item.song)}
                                                 >
-                                                    {isDownloaded(item.song.id) ? (
-                                                        <>
-                                                            <Check className="mr-2 h-4 w-4 text-green-500" />
-                                                            <span>Đã tải xuống</span>
-                                                        </>
-                                                    ) : getDownloadById(item.song.id)?.status === 'PENDING' || getDownloadById(item.song.id)?.status === 'DOWNLOADING' ? (
+                                                    {downloading[item.song.id] ? (
                                                         <>
                                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                             <span>Đang tải xuống...</span>
-                                                        </>
-                                                    ) : getDownloadById(item.song.id)?.status === 'FAILED' ? (
-                                                        <>
-                                                            <X className="mr-2 h-4 w-4 text-red-500" />
-                                                            <span>Tải xuống thất bại - Thử lại</span>
                                                         </>
                                                     ) : (
                                                         <>
@@ -671,14 +666,10 @@ export default function DashboardPage() {
                                     <button
                                         onClick={(e) => handleDownloadSong(e, song)}
                                         className="p-2 rounded-full hover:bg-white/10"
-                                        title={isDownloaded(song.id) ? "Đã tải xuống" : "Tải xuống"}
+                                        title={downloading[song.id] ? "Đang tải xuống" : "Tải xuống"}
                                     >
-                                        {isDownloaded(song.id) ? (
-                                            <Check className="h-4 w-4 text-green-500" />
-                                        ) : getDownloadById(song.id)?.status === 'PENDING' || getDownloadById(song.id)?.status === 'DOWNLOADING' ? (
+                                        {downloading[song.id] ? (
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : getDownloadById(song.id)?.status === 'FAILED' ? (
-                                            <X className="h-4 w-4 text-red-500" />
                                         ) : (
                                             <Download className="h-4 w-4" />
                                         )}

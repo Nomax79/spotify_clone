@@ -6,7 +6,6 @@
 import { AuthService } from "./services/AuthService";
 import { SongService } from "./services/SongService";
 import { PlaylistService } from "./services/PlaylistService";
-import { OfflineService } from "./services/OfflineService";
 import { GenresService } from "./services/GenresService";
 import { AlbumService } from "./services/AlbumService";
 
@@ -14,7 +13,6 @@ import { AlbumService } from "./services/AlbumService";
 const authService = new AuthService();
 const songService = new SongService();
 const playlistService = new PlaylistService();
-const offlineService = new OfflineService();
 const genresService = new GenresService();
 const albumService = new AlbumService();
 
@@ -23,7 +21,6 @@ export const api = {
   auth: authService,
   songs: songService,
   playlists: playlistService,
-  offline: offlineService,
   genres: genresService,
   albums: albumService,
 };

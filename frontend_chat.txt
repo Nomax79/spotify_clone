@@ -1,0 +1,302 @@
+Phân Tích Hệ Thống Chat Trong Dự Án Django
+1. Tổng Quan Hệ Thống Chat
+Dựa trên phân tích code của dự án, hệ thống chat được triển khai qua hai phương thức chính:
+REST API: Cho phép người dùng gửi/nhận tin nhắn và xem lịch sử trò chuyện
+WebSocket với Django Channels: Cho phép trò chuyện thời gian thực
+Hệ thống hỗ trợ:
+Chat giữa người dùng với nhau
+Chia sẻ bài hát và playlist qua tin nhắn
+2. Các API REST Cho Chức Năng Chat
+2.1. Xem Lịch Sử Tin Nhắn
+Endpoint: /api/v1/music/messages/
+View: MessageListView
+HTTP Method: GET
+Xác thực: Yêu cầu người dùng đã đăng nhập (IsAuthenticated)
+Response:
+{
+  "received": [
+    {
+      "id": 1,
+      "sender": {
+        "id": 2,
+        "username": "user2",
+        "avatar": "url_to_avatar"
+      },
+      "receiver": {
+        "id": 1,
+        "username": "user1",
+        "avatar": "url_to_avatar"
+      },
+      "content": "Nội dung tin nhắn",
+      "timestamp": "2023-04-28T10:15:30Z",
+      "is_read": true,
+      "message_type": "TEXT",
+      "shared_song": null,
+      "shared_playlist": null,
+      "attachment": null,
+      "image": null,
+      "voice_note": null
+    }
+  ],
+  "sent": [
+    // Danh sách tin nhắn đã gửi
+  ]
+}
+2.2. Gửi Tin Nhắn Văn Bản
+Endpoint: /api/v1/music/messages/send/
+View: SendMessageView
+HTTP Method: POST
+Xác thực: Yêu cầu người dùng đã đăng nhập (IsAuthenticated)
+Request Body:
+{
+  "receiver_id": 2,
+  "content": "Nội dung tin nhắn"
+}
+Response:
+{
+  "id": 3,
+  "sender": {
+    "id": 1,
+    "username": "user1",
+    "avatar": "url_to_avatar"
+  },
+  "receiver": {
+    "id": 2,
+    "username": "user2",
+    "avatar": "url_to_avatar"
+  },
+  "content": "Nội dung tin nhắn",
+  "timestamp": "2023-04-28T10:20:30Z",
+  "is_read": false,
+  "message_type": "TEXT",
+  "shared_song": null,
+  "shared_playlist": null,
+  "attachment": null,
+  "image": null,
+  "voice_note": null
+}
+2.3. Chia Sẻ Bài Hát
+Endpoint: /api/v1/music/share/song/<int:song_id>/
+View: ShareSongView
+HTTP Method: POST
+Xác thực: Yêu cầu người dùng đã đăng nhập (IsAuthenticated)
+Request Body:
+{
+  "receiver_id": 2,
+  "content": "Nghe thử bài hát này nhé!"
+}
+Response:
+{
+  "id": 4,
+  "sender": {
+    "id": 1,
+    "username": "user1",
+    "avatar": "url_to_avatar"
+  },
+  "receiver": {
+    "id": 2,
+    "username": "user2",
+    "avatar": "url_to_avatar"
+  },
+  "content": "Nghe thử bài hát này nhé!",
+  "timestamp": "2023-04-28T11:15:30Z",
+  "is_read": false,
+  "message_type": "SONG",
+  "shared_song": {
+    "id": 10,
+    "title": "Tên bài hát",
+    "artist": "Tên nghệ sĩ",
+    "cover_image": "url_to_cover_image",
+    "duration": 240
+  },
+  "shared_playlist": null,
+  "attachment": null,
+  "image": null,
+  "voice_note": null
+}
+2.4. Chia Sẻ Playlist
+Endpoint: /api/v1/music/share/playlist/<int:playlist_id>/
+View: SharePlaylistView
+HTTP Method: POST
+Xác thực: Yêu cầu người dùng đã đăng nhập (IsAuthenticated)
+Request Body:
+{
+  "receiver_id": 2,
+  "content": "Playlist mới của mình"
+}
+Response: Tương tự như chia sẻ bài hát, nhưng trường shared_playlist có giá trị và shared_song là null.
+3. WebSocket cho Chat Thời Gian Thực
+3.1. Cấu Hình WebSocket
+WebSocket URL: ws://<domain>/ws/chat/<room_name>/
+Xác thực: JWT Token qua tham số query trong URL hoặc cookies
+3.2. Consumers
+File: chat/consumers.py
+ChatConsumer: Xử lý kết nối WebSocket
+# Các phương thức chính trong ChatConsumer
+class ChatConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # Xác thực người dùng và tham gia room
+        
+    async def disconnect(self, close_code):
+        # Rời khỏi room
+        
+    async def receive(self, text_data):
+        # Nhận tin nhắn từ client
+        
+    async def chat_message(self, event):
+        # Gửi tin nhắn đến client
+3.3. Routing
+File: chat/routing.py
+websocket_urlpatterns = [
+    re_path(r'ws/chat/(?P<room_name>\w+)/$', consumers.ChatConsumer.as_asgi()),
+]
+3.4. Cấu Trúc Tin Nhắn WebSocket
+Gửi tin nhắn (từ client đến server):
+{
+  "message": "Nội dung tin nhắn",
+  "type": "chat_message"
+}
+Nhận tin nhắn (từ server đến client):
+{
+  "message": "Nội dung tin nhắn",
+  "sender": "username",
+  "sender_id": 1,
+  "timestamp": "2023-04-28T11:30:45Z"
+}
+4. Cấu Trúc Dữ Liệu Message
+Model: Message (trong music/models.py)
+Các trường chính:
+sender: ForeignKey đến User (người gửi)
+receiver: ForeignKey đến User (người nhận)
+content: TextField (nội dung tin nhắn)
+timestamp: DateTimeField (thời gian gửi)
+is_read: BooleanField (đã đọc chưa)
+message_type: CharField (loại tin nhắn: TEXT, SONG, PLAYLIST...)
+shared_song: ForeignKey đến Song (bài hát được chia sẻ)
+shared_playlist: ForeignKey đến Playlist (playlist được chia sẻ)
+attachment: FileField (tập tin đính kèm)
+image: ImageField (hình ảnh đính kèm)
+voice_note: FileField (ghi âm đính kèm)
+5. Hướng Dẫn Tích Hợp Frontend
+5.1. Xác Thực
+REST API: Sử dụng JWT Token trong header:
+   Authorization: Bearer <token>
+   const socket = new WebSocket(
+     `ws://domain.com/ws/chat/room_name/?token=${jwtToken}`
+   );
+5.2. Gửi & Nhận Tin Nhắn Qua REST API
+Xem lịch sử chat:
+   // Lấy lịch sử tin nhắn
+   fetch('/api/v1/music/messages/', {
+     headers: {
+       'Authorization': `Bearer ${token}`
+     }
+   })
+   .then(response => response.json())
+   .then(data => {
+     // Hiển thị tin nhắn đã gửi và nhận
+     const allMessages = [...data.received, ...data.sent];
+     // Sắp xếp theo thời gian
+     allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+   });
+Gửi tin nhắn văn bản:
+   fetch('/api/v1/music/messages/send/', {
+     method: 'POST',
+     headers: {
+       'Content-Type': 'application/json',
+       'Authorization': `Bearer ${token}`
+     },
+     body: JSON.stringify({
+       receiver_id: receiverId,
+       content: messageText
+     })
+   })
+   .then(response => response.json())
+   .then(data => {
+     // Xử lý tin nhắn đã gửi thành công
+   });
+   fetch(`/api/v1/music/share/song/${songId}/`, {
+     method: 'POST',
+     headers: {
+       'Content-Type': 'application/json',
+       'Authorization': `Bearer ${token}`
+     },
+     body: JSON.stringify({
+       receiver_id: receiverId,
+       content: "Nghe thử bài hát này nhé!"
+     })
+   })
+   .then(response => response.json())
+   .then(data => {
+     // Xử lý kết quả chia sẻ
+   });
+5.3. Chat Thời Gian Thực Với WebSocket
+Thiết lập kết nối
+   // Tạo kết nối
+   const roomName = `private_${currentUserId}_${receiverId}`;
+   const chatSocket = new WebSocket(
+     `ws://${window.location.host}/ws/chat/${roomName}/?token=${jwtToken}`
+   );
+
+   // Xử lý khi nhận tin nhắn
+   chatSocket.onmessage = function(e) {
+     const data = JSON.parse(e.data);
+     // Hiển thị tin nhắn mới
+     displayMessage(data.message, data.sender, data.timestamp);
+   };
+
+   // Xử lý mất kết nối
+   chatSocket.onclose = function(e) {
+     console.error('Chat socket closed unexpectedly');
+   };
+Gửi tin nhắn
+   chatSocket.send(JSON.stringify({
+     'message': messageInputValue,
+     'type': 'chat_message'
+   }));
+5.4. Hiển Thị Các Loại Tin Nhắn
+Tin nhắn văn bản: Hiển thị trực tiếp nội dung và thông tin người gửi
+Tin nhắn chia sẻ bài hát:
+
+   function displaySongMessage(message) {
+     // Truy cập thông tin bài hát
+     const song = message.shared_song;
+     
+     // Tạo UI hiển thị bài hát
+     const songElement = `
+       <div class="shared-song">
+         <img src="${song.cover_image}" alt="${song.title}" />
+         <div>
+           <h4>${song.title}</h4>
+           <p>${song.artist}</p>
+         </div>
+         <button onclick="playSong('${song.stream_url}')">▶️</button>
+       </div>
+     `;
+     
+     // Thêm vào container tin nhắn
+     // ...
+   }
+Tin nhắn chia sẻ playlist: Tương tự như hiển thị bài hát
+6. Xử Lý Trạng Thái "Đã Đọc"
+Khi người dùng mở MessageListView, tất cả tin nhắn đã nhận sẽ được đánh dấu là đã đọc:
+// Frontend cần gọi API lấy tin nhắn để tự động đánh dấu tin nhắn đã đọc
+fetch('/api/v1/music/messages/', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+// API tự động đánh dấu tin nhắn là đã đọc khi truy cập
+7. Lưu Ý Bảo Mật
+Xác thực REST API: Sử dụng JWT token, có giới hạn thời gian.
+Xác thực WebSocket:
+Token được truyền qua query parameter hoặc cookie
+Cần đảm bảo kết nối HTTPS/WSS trong môi trường production
+Kiểm soát quyền truy cập:
+Người dùng chỉ có thể xem/gửi tin nhắn của chính mình
+Tất cả API yêu cầu người dùng đã đăng nhập
+8. Đề Xuất Cải Thiện
+Triển khai WebSocket (WSS) qua HTTPS trong môi trường production
+Thêm cơ chế thông báo khi có tin nhắn mới
+Cân nhắc thêm tính năng "đang nhập" (typing indicator)
+Tích hợp lưu tin nhắn offline và đồng bộ khi kết nối lại

@@ -9,6 +9,8 @@ type AuthContextType = {
   user: User | null
   isLoading: boolean
   isAdmin: boolean
+  isAuthenticated: boolean
+  loading: boolean
   accessToken: string | null
   login: (email: string, password: string) => Promise<void>
   loginWithProvider: (provider: string) => Promise<void>
@@ -270,6 +272,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAdmin: user?.is_admin || false,
+        isAuthenticated: user !== null,
+        loading: isLoading,
         accessToken,
         login,
         loginWithProvider,
