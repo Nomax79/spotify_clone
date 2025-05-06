@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -14,6 +14,16 @@ const inter = Inter({
   preload: true,   // Preload font
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: '#121212' },
+  ],
+};
+
 export const metadata: Metadata = {
   title: {
     template: '%s | Spotify Clone',
@@ -24,17 +34,8 @@ export const metadata: Metadata = {
   icons: [
     {
       rel: 'icon',
-      url: '/spotify-logo.png',
+      url: '/spotify-logo.svg',
     },
-  ],
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: '#121212' },
   ],
 };
 
@@ -53,7 +54,7 @@ export default function RootLayout({
         />
         <link
           rel="preload"
-          href="/spotify-logo.png"
+          href="/spotify-logo.svg"
           as="image"
         />
       </head>

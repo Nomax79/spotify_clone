@@ -6,7 +6,7 @@ import { LoginPromptAlert } from "@/components/ui/LoginPromptAlert"
 import { usePlayer } from "./PlayerContext"
 import { SongType, PlayerContextType } from "./PlayerContext"
 import { toast } from "@/components/ui/use-toast"
-import postmanApi from "@/lib/api/postman"
+import { api } from "@/lib/api"
 
 // Cache URL để cải thiện hiệu suất
 const urlCache = new Map<string, string>();
@@ -165,7 +165,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (song.id) {
             try {
                 // Không đợi kết quả trả về để tránh làm chậm việc phát nhạc
-                postmanApi.music.playSong(String(song.id))
+                api.songs.playSong(String(song.id))
                     .then(() => console.log("Ghi nhận lượt phát thành công"))
                     .catch(err => console.error("Lỗi ghi nhận lượt phát:", err));
             } catch (error) {

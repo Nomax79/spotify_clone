@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { AlbumType } from "@/components/music/AlbumCard"
 import { AlbumCard } from "@/components/music/AlbumCard"
-import { postmanApi } from "@/lib/api/postman"
+import { api } from "@/lib/api"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
 
@@ -22,7 +22,7 @@ export default function AlbumsPage() {
         async function fetchAlbums() {
             try {
                 setLoading(true)
-                const albumsData = await postmanApi.music.getAlbums()
+                const albumsData = await api.albums.getAlbums()
                 // Chuyển đổi dữ liệu từ API về định dạng AlbumType
                 const formattedAlbums = albumsData.map((album: any) => ({
                     id: album.id,

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import postmanApi from "@/lib/api/postman"
+import { api } from "@/lib/api"
 import { User } from "@/types"
 
 type AuthContextType = {
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("===== ĐẦU QUÁ TRÌNH ĐĂNG NHẬP =====")
       // Call the login API
-      const response = await postmanApi.auth.login(email, password)
+      const response = await api.auth.login(email, password)
       const { access, refresh, user: userDataResponse } = response
       console.log("Đăng nhập thành công, nhận được token:", { access: access.substring(0, 15) + "..." })
 
@@ -238,11 +238,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }) => {
     setIsLoading(true)
     try {
-      // Call the register API
-      await postmanApi.auth.register(userData)
+      const response = await api.auth.register(userData)
+      console.log("Registration successful")
 
-      // Redirect to login
-      router.push("/login")
+      // Đăng nhập sau khi đăng ký thành công
+      if (userData.email && userData.password) {
+        await login(userData.email, userData.password)
+      } else {
+        router.push("/login")
+      }
     } catch (error) {
       console.error("Registration failed:", error)
       throw error
@@ -252,16 +256,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    setUser(null)
     localStorage.removeItem("spotify_token")
     localStorage.removeItem("spotify_refresh_token")
     localStorage.removeItem("spotify_user")
-    router.push("/")
+    setUser(null)
+    setAccessToken(null)
+    router.push("/login")
   }
 
-  const isAdmin = user?.is_admin === true
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAdmin, accessToken, login, loginWithProvider, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAdmin: user?.is_admin || false,
+        accessToken,
+        login,
+        loginWithProvider,
+        register,
+        logout
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

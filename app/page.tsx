@@ -3,87 +3,191 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
-import { Home, Search, Plus, ChevronRight } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { SongCard, SongType } from "@/components/music/SongCard"
-import { AlbumCard, AlbumType } from "@/components/music/AlbumCard"
-import ArtistCard, { ArtistType } from "@/components/music/ArtistCard"
-import { musicApi } from "@/app/api/music"
-import { usePlayer } from "@/components/player/PlayerContext"
+import { ArtistType } from "@/components/music/ArtistCard"
+import { api } from "@/lib/api"
+import { Sidebar } from "@/components/Sidebar"
+import { toast } from "@/components/ui/use-toast"
+import { Suspense } from "react"
+
+// Placeholder components để hiển thị khi đang loading
+const SongCardSkeleton = () => (
+  <div className="bg-zinc-800/40 rounded-md aspect-square animate-pulse" />
+)
+
+const TrendingSongs = () => {
+  const [trendingSongs, setTrendingSongs] = useState<SongType[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    const fetchTrendingSongs = async () => {
+      try {
+        setLoading(true)
+        const trendingResponse = await api.songs.getTrendingSongs();
+
+        if (trendingResponse && trendingResponse.results) {
+          const mappedSongs = trendingResponse.results.map(song => ({
+            id: parseInt(song.id),
+            title: song.title,
+            artist: {
+              id: song.uploaded_by?.id ? parseInt(song.uploaded_by.id) : 0,
+              name: song.artist,
+              avatar: null
+            },
+            album: {
+              id: 0,
+              title: song.album || "Unknown Album"
+            },
+            duration: song.duration.toString(),
+            play_count: song.play_count,
+            image_url: song.cover_image || null,
+            file_url: song.audio_file,
+            created_at: song.created_at,
+            updated_at: song.created_at
+          }));
+
+          setTrendingSongs(mappedSongs);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu:", error)
+      } finally {
+        setLoading(false)
+      }
+    };
+
+    fetchTrendingSongs();
+  }, [])
+
+  const handlePlaySong = () => {
+    // Chuyển hướng đến trang đăng nhập khi người dùng cố gắng phát nhạc
+    toast({
+      title: "Cần đăng nhập",
+      description: "Bạn cần đăng nhập để nghe nhạc.",
+      variant: "default"
+    })
+    router.push("/login");
+  }
+
+  return (
+    <>
+      <h2 className="text-2xl font-bold mb-4 flex justify-between items-center">
+        Bài hát thịnh hành trong 7 ngày qua
+      </h2>
+
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, index) => (
+            <SongCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {trendingSongs.map((song) => (
+            <SongCard
+              key={song.id}
+              song={song}
+              onPlay={() => handlePlaySong()}
+              playlist={[]}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+const PopularArtists = () => {
+  const [popularArtists, setPopularArtists] = useState<ArtistType[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    const fetchArtists = async () => {
+      try {
+        setLoading(true)
+        const artistsResponse = await api.songs.getArtists({ limit: 6 })
+
+        // Map dữ liệu từ API sang định dạng ArtistType
+        const mappedArtists = artistsResponse.results.map(artist => ({
+          id: artist.id,
+          name: artist.name,
+          bio: artist.bio || "Nghệ sĩ âm nhạc",
+          image: artist.image || null
+        }));
+
+        setPopularArtists(mappedArtists);
+      } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu nghệ sĩ:", error)
+      } finally {
+        setLoading(false)
+      }
+    };
+
+    fetchArtists();
+  }, [])
+
+  const handleArtistClick = (artistId: number) => {
+    router.push('/login');
+    toast({
+      title: "Cần đăng nhập",
+      description: "Bạn cần đăng nhập để xem chi tiết nghệ sĩ.",
+      variant: "default"
+    })
+  }
+
+  return (
+    <>
+      <h2 className="text-2xl font-bold mb-4 flex justify-between items-center mt-8">
+        Nghệ sĩ phổ biến
+      </h2>
+
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, index) => (
+            <SongCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {popularArtists.map((artist) => (
+            <div
+              key={artist.id}
+              className="bg-zinc-800/40 hover:bg-zinc-700/40 rounded-md p-4 cursor-pointer transition-colors"
+              onClick={() => handleArtistClick(artist.id)}
+            >
+              <div className="aspect-square bg-zinc-900 rounded-full mb-4 overflow-hidden">
+                {artist.image && (
+                  <img
+                    src={artist.image}
+                    alt={artist.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                )}
+              </div>
+              <h3 className="font-medium truncate">{artist.name}</h3>
+              <p className="text-sm text-zinc-400">Nghệ sĩ</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
 
 export default function HomePage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [trendingSongs, setTrendingSongs] = useState<SongType[]>([])
-  const [popularArtists, setPopularArtists] = useState<ArtistType[]>([])
-  const [loading, setLoading] = useState(true)
-  const { play, getDirectMediaUrl } = usePlayer()
 
-  // If user is logged in, redirect to the music app
+  // Nếu user đã đăng nhập, chuyển hướng đến trang chính
   useEffect(() => {
     if (user) {
       router.push("/dashboard")
     }
   }, [user, router])
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true)
-        // Lấy danh sách bài hát thịnh hành từ API thật
-        const trendingResponse = await musicApi.getTrendingSongs();
-
-
-        // Chuyển đổi dữ liệu từ API thật sang định dạng của ứng dụng
-        const mappedSongs = trendingResponse.results.map(song => ({
-          id: song.id,
-          title: song.title,
-          artist: {
-            id: song.uploaded_by?.id || 0,
-            name: song.artist,
-            avatar: null
-          },
-          album: {
-            id: 0,
-            title: song.album || "Unknown Album"
-          },
-          duration: song.duration.toString(),
-          play_count: song.play_count,
-          // Sử dụng URL trực tiếp từ API
-          image_url: song.cover_image,
-          file_url: song.audio_file,
-          created_at: song.created_at,
-          updated_at: song.created_at
-        }));
-
-        setTrendingSongs(mappedSongs);
-
-        // Lấy danh sách nghệ sĩ phổ biến
-        const artistsResponse = await musicApi.getArtists({ limit: 6 })
-        setPopularArtists(artistsResponse.data)
-      } catch (error) {
-        console.error("Lỗi khi lấy dữ liệu:", error)
-        // Fallback sang mocked data
-        const songsResponse = await musicApi.getSongs({ limit: 6 })
-        setTrendingSongs(songsResponse.data)
-
-        const artistsResponse = await musicApi.getArtists({ limit: 6 })
-        setPopularArtists(artistsResponse.data)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  const handlePlaySong = (song: SongType) => {
-    // Cho phép phát nhạc mà không cần kiểm tra đăng nhập
-    // PlayerProvider sẽ hiển thị thông báo đăng nhập nếu cần
-    play(song, trendingSongs)
-  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -112,75 +216,49 @@ export default function HomePage() {
       <div className="flex">
         {/* Sidebar */}
         <div className="w-64 bg-black p-4">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <Button variant="ghost" className="justify-start text-white/70 hover:text-white">
-                <Home className="mr-2 h-5 w-5" />
-                Trang chủ
-              </Button>
-              <Button variant="ghost" className="justify-start text-white/70 hover:text-white">
-                <Search className="mr-2 h-5 w-5" />
-                Tìm kiếm
-              </Button>
-            </div>
-
-          </div>
+          <nav className="mt-2">
+            <ul className="space-y-1 px-2">
+              <li>
+                <Link href="/">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-white"
+                  >
+                    <svg className="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    Trang chủ
+                  </Button>
+                </Link>
+              </li>
+              <li>
+                <Link href="/login">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-zinc-400 hover:text-white"
+                  >
+                    <svg className="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    Tìm kiếm
+                  </Button>
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
 
         {/* Main content */}
         <div className="flex-1 bg-gradient-to-b from-zinc-900 to-black p-6 overflow-auto">
-          <h2 className="text-2xl font-bold mb-4 flex justify-between items-center">
-            Bài hát thịnh hành trong 7 ngày qua
-          </h2>
+          <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Đang tải...</div>}>
+            <TrendingSongs />
+          </Suspense>
 
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="bg-zinc-800/40 rounded-md aspect-square animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {trendingSongs.map((song) => (
-                <SongCard
-                  key={song.id}
-                  song={{
-                    ...song,
-                    // Sử dụng getDirectMediaUrl để xử lý URL trực tiếp
-                    image_url: getDirectMediaUrl(song.image_url),
-                    file_url: getDirectMediaUrl(song.file_url)
-                  }}
-                  onPlay={() => handlePlaySong(song)}
-                  playlist={trendingSongs}
-                />
-              ))}
-            </div>
-          )}
-
-          <h2 className="text-2xl font-bold mb-4 flex justify-between items-center mt-8">
-            Nghệ sĩ phổ biến
-          </h2>
-
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="bg-zinc-800/40 rounded-md aspect-square animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {popularArtists.map((artist) => (
-                <ArtistCard
-                  key={artist.id}
-                  artist={{
-                    ...artist,
-                    // Xử lý URL cho ảnh nghệ sĩ
-                    image: getDirectMediaUrl(artist.image)
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <Suspense fallback={<div className="w-full h-40 flex items-center justify-center">Đang tải...</div>}>
+            <PopularArtists />
+          </Suspense>
         </div>
       </div>
 

@@ -2,9 +2,10 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react"
 import { useAuth } from "@/context/auth-context"
-import postmanApi from "@/lib/api/postman"
 import { toast } from "@/components/ui/use-toast"
 import { SongType } from "@/components/music/SongCard"
+import { api } from "@/lib/api"
+import { User } from "@/types"
 
 export interface OfflineDownload {
     id: number
@@ -73,7 +74,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
         setIsLoading(true)
         try {
-            const response = await postmanApi.offline.getDownloads()
+            const response = await api.offline.getDownloads()
             setOfflineDownloads(response)
 
             // Cập nhật cache
@@ -81,7 +82,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             downloadCache.clear();
 
             // Cập nhật cache cho mỗi bài hát
-            response.forEach(download => {
+            response.forEach((download: OfflineDownload) => {
                 const songId = String(download.song_details.id);
                 const isCompleted = download.status === 'COMPLETED' && download.is_available;
 
@@ -149,7 +150,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-            const response = await postmanApi.offline.downloadSong(songId)
+            const response = await api.offline.downloadSong(songId)
 
             // Cập nhật danh sách tải xuống mà không cần gọi lại API
             const newDownload = response.download;
@@ -197,7 +198,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         if (!user) return
 
         try {
-            await postmanApi.offline.deleteDownload(downloadId)
+            await api.offline.deleteDownload(downloadId)
 
             // Cập nhật danh sách tải xuống
             setOfflineDownloads(prevDownloads => {

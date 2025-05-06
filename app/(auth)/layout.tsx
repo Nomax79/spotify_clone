@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function AuthLayout({
     children,
@@ -65,6 +67,15 @@ export default function AuthLayout({
             {/* Right side - Auth forms */}
             <div className="w-full md:w-1/2 flex justify-center items-center p-8">
                 <div className="max-w-md w-full">
+                    <Button
+                        variant="ghost"
+                        className="flex items-center text-white hover:text-green-500 hover:bg-transparent p-0 mb-8"
+                        onClick={() => router.push('/')}
+                    >
+                        <ChevronLeft className="h-5 w-5 mr-1" />
+                        <span>Quay lại trang chủ</span>
+                    </Button>
+
                     {children}
                     <div className="mt-8 text-center text-zinc-400 text-sm">
                         <p>© 2024 Spotify Clone. All rights reserved.</p>

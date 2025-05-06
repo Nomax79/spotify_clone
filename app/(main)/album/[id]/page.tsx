@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Play, Shuffle, Clock, Heart, MoreHorizontal } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { usePlayer } from "@/components/player/PlayerContext"
-import postmanApi from "@/lib/api/postman"
+import { api } from "@/lib/api"
 
 interface Album {
     id: string | number;
@@ -61,7 +61,7 @@ export default function AlbumPage() {
                 setLoading(true)
 
                 // Lấy chi tiết album
-                const albumResponse = await postmanApi.music.getAlbum(albumId)
+                const albumResponse = await api.albums.getAlbum(albumId)
 
                 // Xử lý dữ liệu album
                 const albumData = {

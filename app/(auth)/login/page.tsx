@@ -107,12 +107,6 @@ export default function LoginPage() {
             )}
           />
 
-          <div className="flex justify-end">
-            <Link href="/forgot-password" className="text-sm text-green-500 hover:text-green-400">
-              Quên mật khẩu?
-            </Link>
-          </div>
-
           <Button type="submit" disabled={isLoading} className="w-full bg-green-500 hover:bg-green-600 text-white">
             {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
           </Button>

@@ -22,6 +22,7 @@ import { postmanApi } from "@/lib/api/postman"
 import { usePlayer } from "@/components/player/PlayerContext"
 import { useToast } from "@/hooks/use-toast"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { api } from "@/lib/api"
 
 export default function SearchPage() {
     const { user } = useAuth()
@@ -41,7 +42,7 @@ export default function SearchPage() {
     })
     const [loading, setLoading] = useState(false)
     const [recentSearches, setRecentSearches] = useState<string[]>([])
-    const [genres, setGenres] = useState<{ id: string; name: string }[]>([])
+    const [genres, setGenres] = useState<{ id: number; name: string }[]>([])
     const { currentSong, isPlaying, play, addToQueue, playlist: currentPlaylist } = usePlayer()
 
     // Kiểm tra nếu bài hát hiện tại có trùng với bài hát trong danh sách không
@@ -63,13 +64,13 @@ export default function SearchPage() {
             setRecentSearches(JSON.parse(savedSearches))
         }
 
-        // Fetch genres for browse categories
+        // Lấy danh sách thể loại
         const fetchGenres = async () => {
             try {
-                const genresData = await postmanApi.music.getGenres()
+                const genresData = await api.genres.getGenres()
                 setGenres(genresData)
             } catch (error) {
-                console.error("Error fetching genres:", error)
+                console.error("Lỗi khi lấy danh sách thể loại:", error)
             }
         }
 

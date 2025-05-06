@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { SongType } from "@/components/music/SongCard"
 import { SongRow } from "@/components/music/SongRow"
 import { SongListHeader } from "@/components/music/SongListHeader"
-import { musicApi } from "@/app/api/music"
+import { api } from "@/lib/api"
 import { usePlayer } from "@/components/player/PlayerContext"
 
 export default function SongsPage() {
@@ -16,8 +16,8 @@ export default function SongsPage() {
         async function fetchSongs() {
             try {
                 setLoading(true)
-                const response = await musicApi.getSongs({ limit: 50 })
-                setSongs(response.data)
+                const response = await api.songs.getSongs({ limit: 50 })
+                setSongs(response.results as SongType[])
             } catch (error) {
                 console.error("Lỗi khi lấy danh sách bài hát:", error)
             } finally {

@@ -9,18 +9,17 @@ import { useAuth } from "@/context/auth-context";
 import { usePlayer } from "@/components/player/PlayerContext";
 import { useToast } from "@/hooks/use-toast";
 import postmanApi from "@/lib/api/postman";
+import { api, Genre } from "@/lib/api";
 
-interface Genre {
-    id: string;
-    name: string;
-    description?: string;
-    song_count?: number;
-    color?: string;
+// Mở rộng interface Genre để có thêm trường color
+interface GenreWithColor extends Genre {
+    color: string;
 }
 
 export default function GenresPage() {
-    const [genres, setGenres] = useState<Genre[]>([]);
+    const [genresWithColor, setGenresWithColor] = useState<GenreWithColor[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
     const router = useRouter();
     const { user } = useAuth();
     const { play } = usePlayer();
@@ -40,41 +39,32 @@ export default function GenresPage() {
     useEffect(() => {
         if (!user) {
             router.push("/");
-            return;
         }
+    }, [user, router]);
 
-        async function fetchGenres() {
+    // Lấy danh sách thể loại khi component được mount
+    useEffect(() => {
+        const fetchGenres = async () => {
             try {
                 setLoading(true);
-                const response = await postmanApi.music.getGenres();
-
-                // Nếu response là array, sử dụng trực tiếp
-                // Nếu không, tìm trong nested object
-                let data = response;
-                if (!Array.isArray(response)) {
-                    if (response.results && Array.isArray(response.results)) {
-                        data = response.results;
-                    } else if (response.data && Array.isArray(response.data)) {
-                        data = response.data;
-                    }
-                }
-
-                // Thêm màu ngẫu nhiên cho mỗi thể loại
-                const genresWithColor = data.map((genre: any, index: number) => ({
+                const genres = await api.genres.getGenres();
+                // Thêm màu sắc cho mỗi thể loại
+                const withColors = genres.map((genre, index) => ({
                     ...genre,
                     color: genreColors[index % genreColors.length]
                 }));
-
-                setGenres(genresWithColor);
-            } catch (error) {
-                console.error("Lỗi khi lấy danh sách thể loại:", error);
+                setGenresWithColor(withColors);
+                setError(null);
+            } catch (err) {
+                console.error("Lỗi khi lấy danh sách thể loại:", err);
+                setError(err instanceof Error ? err : new Error("Không thể lấy danh sách thể loại"));
             } finally {
                 setLoading(false);
             }
-        }
+        };
 
         fetchGenres();
-    }, [user, router, genreColors]);
+    }, []);
 
     const handlePlayGenre = async (genreName: string, event: React.MouseEvent) => {
         event.preventDefault();
@@ -113,7 +103,9 @@ export default function GenresPage() {
             }));
 
             // Phát danh sách bài hát
-            play(formattedSongs, 0);
+            if (formattedSongs.length > 0) {
+                play(formattedSongs[0], formattedSongs);
+            }
 
             toast({
                 title: "Đang phát",
@@ -128,6 +120,17 @@ export default function GenresPage() {
             });
         }
     };
+
+    // Hiển thị lỗi nếu có
+    if (error) {
+        return (
+            <div className="p-6 text-center">
+                <h1 className="text-3xl font-bold mb-6">Khám phá thể loại</h1>
+                <div className="text-red-500 mb-4">Không thể tải danh sách thể loại</div>
+                <p className="text-zinc-400">Vui lòng thử lại sau</p>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -144,7 +147,7 @@ export default function GenresPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {genres.map((genre) => (
+                    {genresWithColor.map((genre) => (
                         <Link
                             href={`/genre/${encodeURIComponent(genre.name)}`}
                             key={genre.id || genre.name}
@@ -155,7 +158,7 @@ export default function GenresPage() {
                             <div className="absolute bottom-4 left-4 right-4">
                                 <h3 className="text-xl font-bold">{genre.name}</h3>
                                 <p className="text-sm text-white/80">
-                                    {genre.song_count || 0} bài hát
+                                    {genre.songs_count || 0} bài hát
                                 </p>
                             </div>
                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">

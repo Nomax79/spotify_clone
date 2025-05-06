@@ -6,11 +6,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
-import { Play, Shuffle, Clock, Heart, PlusCircle } from "lucide-react"
+import { Play, Shuffle, Clock, Heart, PlusCircle, User } from "lucide-react"
 import { SongCard } from "@/components/music/SongCard"
 import { usePlayer } from "@/components/player/PlayerContext"
 import { useToast } from "@/hooks/use-toast"
 import postmanApi from "@/lib/api/postman"
+import { api } from "@/lib/api"
 
 interface Song {
     id: string
@@ -25,6 +26,20 @@ interface Song {
     likes_count?: number
 }
 
+interface TopArtist {
+    name: string
+    songs_count: number
+}
+
+interface GenreDetails {
+    id: number
+    name: string
+    description: string
+    image: string | null
+    top_songs: any[]
+    top_artists: TopArtist[]
+}
+
 export default function GenrePage({ params }: { params: { name: string } }) {
     const { name } = params
     const decodedName = decodeURIComponent(name)
@@ -33,6 +48,7 @@ export default function GenrePage({ params }: { params: { name: string } }) {
     const { toast } = useToast()
     const { play, isPlaying, currentSong, pause, resume } = usePlayer()
 
+    const [genreData, setGenreData] = useState<GenreDetails | null>(null)
     const [songs, setSongs] = useState<Song[]>([])
     const [loading, setLoading] = useState(true)
     const [color, setColor] = useState("from-purple-600 to-indigo-800")
@@ -44,38 +60,29 @@ export default function GenrePage({ params }: { params: { name: string } }) {
             return
         }
 
-        async function fetchGenreSongs() {
+        async function fetchGenreDetails() {
             try {
                 setLoading(true)
 
-                // Lấy danh sách bài hát theo thể loại
-                const response = await postmanApi.music.search(decodedName)
+                // Đầu tiên lấy danh sách genres để tìm ID của genre từ tên
+                const genres = await api.genres.getGenres()
+                const genre = genres.find(g => g.name === decodedName)
 
-                let songsData = []
-                // Lọc các kết quả tìm kiếm chỉ lấy bài hát
-                if (response.results && Array.isArray(response.results.songs)) {
-                    songsData = response.results.songs
-                } else if (Array.isArray(response)) {
-                    songsData = response.filter((item: any) => item.title || item.name)
-                } else if (response.songs && Array.isArray(response.songs)) {
-                    songsData = response.songs
+                if (!genre) {
+                    toast({
+                        title: "Lỗi",
+                        description: `Không tìm thấy thể loại ${decodedName}`,
+                        variant: "destructive",
+                    })
+                    return
                 }
 
-                // Chuyển đổi định dạng dữ liệu nếu cần
-                const formattedSongs = songsData.map((song: any) => ({
-                    id: song.id,
-                    title: song.title || song.name,
-                    artist: song.artist,
-                    album: song.album?.name || song.album || "-",
-                    duration: song.duration || 0,
-                    audio_url: song.audio_url || song.audio_file || song.file_url,
-                    audio_file: song.audio_file || song.file_url,
-                    cover_image: song.cover_image || song.image_url,
-                    play_count: song.play_count || 0,
-                    likes_count: song.likes_count || 0
-                }))
+                // Lấy chi tiết thể loại
+                const genreDetails = await api.genres.getGenre(genre.id)
+                setGenreData(genreDetails)
 
-                setSongs(formattedSongs)
+                // Lấy danh sách bài hát từ top_songs
+                setSongs(genreDetails.top_songs)
 
                 // Random một màu từ danh sách màu
                 const colors = [
@@ -89,10 +96,10 @@ export default function GenrePage({ params }: { params: { name: string } }) {
                 ]
                 setColor(colors[Math.floor(Math.random() * colors.length)])
             } catch (error) {
-                console.error("Lỗi khi lấy danh sách bài hát theo thể loại:", error)
+                console.error("Lỗi khi lấy thông tin chi tiết thể loại:", error)
                 toast({
                     title: "Lỗi",
-                    description: "Không thể tải bài hát. Vui lòng thử lại sau.",
+                    description: "Không thể tải thông tin thể loại. Vui lòng thử lại sau.",
                     variant: "destructive",
                 })
             } finally {
@@ -100,7 +107,7 @@ export default function GenrePage({ params }: { params: { name: string } }) {
             }
         }
 
-        fetchGenreSongs()
+        fetchGenreDetails()
     }, [user, router, decodedName, toast])
 
     const formatTime = (seconds: number) => {
@@ -116,11 +123,11 @@ export default function GenrePage({ params }: { params: { name: string } }) {
                 title: song.title,
                 artist: typeof song.artist === 'string' ? song.artist : song.artist?.name || 'Unknown Artist',
                 duration: typeof song.duration === 'string' ? song.duration : formatTime(song.duration),
-                file_url: song.audio_url || song.audio_file,
+                file_url: song.audio_file,
                 image_url: song.cover_image,
                 album: song.album
             }))
-            play(songsToPlay, 0)
+            play(songsToPlay[0], songsToPlay)
             toast({
                 title: "Đang phát",
                 description: `Danh sách nhạc thể loại ${decodedName}`,
@@ -128,21 +135,25 @@ export default function GenrePage({ params }: { params: { name: string } }) {
         }
     }
 
-    const handlePlaySong = (index: number) => {
-        if (songs.length > index) {
-            const songsToPlay = songs.map(song => ({
-                id: song.id,
-                title: song.title,
-                artist: typeof song.artist === 'string' ? song.artist : song.artist?.name || 'Unknown Artist',
-                duration: typeof song.duration === 'string' ? song.duration : formatTime(song.duration),
-                file_url: song.audio_url || song.audio_file,
-                image_url: song.cover_image,
-                album: song.album
+    const handlePlaySong = (song: any) => {
+        if (songs.length > 0) {
+            const songsToPlay = songs.map(s => ({
+                id: s.id,
+                title: s.title,
+                artist: typeof s.artist === 'string' ? s.artist : s.artist?.name || 'Unknown Artist',
+                duration: typeof s.duration === 'string' ? s.duration : formatTime(s.duration),
+                file_url: s.audio_file,
+                image_url: s.cover_image,
+                album: s.album
             }))
-            play(songsToPlay, index)
+
+            // Tìm index của bài hát được chọn
+            const index = songsToPlay.findIndex(s => s.id === song.id)
+
+            play(songsToPlay[index >= 0 ? index : 0], songsToPlay)
             toast({
                 title: "Đang phát",
-                description: `${songs[index].title}`,
+                description: `${song.title}`,
             })
         }
     }
@@ -156,11 +167,11 @@ export default function GenrePage({ params }: { params: { name: string } }) {
                 title: song.title,
                 artist: typeof song.artist === 'string' ? song.artist : song.artist?.name || 'Unknown Artist',
                 duration: typeof song.duration === 'string' ? song.duration : formatTime(song.duration),
-                file_url: song.audio_url || song.audio_file,
+                file_url: song.audio_file,
                 image_url: song.cover_image,
                 album: song.album
             }))
-            play(songsToPlay, 0)
+            play(songsToPlay[0], songsToPlay)
             toast({
                 title: "Đang phát ngẫu nhiên",
                 description: `Danh sách nhạc thể loại ${decodedName}`,
@@ -205,14 +216,12 @@ export default function GenrePage({ params }: { params: { name: string } }) {
                 title: song.title,
                 artist: typeof song.artist === 'string' ? song.artist : song.artist?.name || 'Unknown Artist',
                 duration: typeof song.duration === 'string' ? song.duration : formatTime(song.duration),
-                file_url: song.audio_url || song.audio_file,
+                file_url: song.audio_file,
                 image_url: song.cover_image,
                 album: song.album
             };
 
-            // Giả sử usePlayer hook có một phương thức addToQueue
-            // Nếu không có, bạn cần cập nhật PlayerContext để hỗ trợ chức năng này
-            if (typeof usePlayer().addToQueue === 'function') {
+            if (usePlayer().addToQueue) {
                 usePlayer().addToQueue(formattedSong);
                 toast({
                     title: "Đã thêm vào hàng đợi",
@@ -239,6 +248,7 @@ export default function GenrePage({ params }: { params: { name: string } }) {
                     <h1 className="text-5xl font-extrabold mb-6">{decodedName}</h1>
                     <div className="flex items-center gap-2">
                         <span>{songs.length} bài hát</span>
+                        {genreData?.description && <span className="text-sm text-white/70">• {genreData.description}</span>}
                     </div>
                 </div>
             </div>
@@ -261,86 +271,96 @@ export default function GenrePage({ params }: { params: { name: string } }) {
                     ))}
                 </div>
             ) : songs.length > 0 ? (
-                <div className="relative overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="text-sm text-zinc-400 border-b border-zinc-800">
-                            <tr>
-                                <th className="px-4 py-3 w-12">#</th>
-                                <th className="px-4 py-3">Tiêu đề</th>
-                                <th className="px-4 py-3">Album</th>
-                                <th className="px-4 py-3 w-20">Hành động</th>
-                                <th className="px-4 py-3 text-center w-24">
-                                    <Clock className="h-4 w-4 inline" />
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {songs.map((song, index) => (
-                                <tr
-                                    key={song.id}
-                                    className="hover:bg-zinc-800/50 text-sm group"
-                                >
-                                    <td className="px-4 py-3 w-12">
-                                        <div className="group-hover:hidden">{index + 1}</div>
-                                        <div className="hidden group-hover:block">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6 p-0"
-                                                onClick={() => handlePlaySong(index)}
-                                            >
-                                                <Play className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex-shrink-0 w-10 h-10 relative">
-                                                <Image
-                                                    src={song.cover_image || "/placeholder-song.jpg"}
-                                                    alt={song.title}
-                                                    className="object-cover rounded-sm"
-                                                    fill
-                                                />
-                                            </div>
-                                            <div>
-                                                <div className="font-medium">{song.title}</div>
-                                                <div className="text-zinc-400">
-                                                    {typeof song.artist === 'string'
-                                                        ? song.artist
-                                                        : song.artist?.name || 'Unknown Artist'}
+                <div>
+                    <h2 className="text-2xl font-bold mb-4">Bài hát hàng đầu</h2>
+                    <div className="relative overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="text-sm text-zinc-400 border-b border-zinc-800">
+                                <tr>
+                                    <th className="px-4 py-3 w-12">#</th>
+                                    <th className="px-4 py-3">Tiêu đề</th>
+                                    <th className="px-4 py-3">Album</th>
+                                    <th className="px-4 py-3 w-20">Hành động</th>
+                                    <th className="px-4 py-3 text-center w-24">
+                                        <Clock className="h-4 w-4 inline" />
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {songs.map((song, index) => (
+                                    <tr
+                                        key={song.id}
+                                        className="hover:bg-white/5 cursor-pointer"
+                                        onClick={() => handlePlaySong(song)}
+                                    >
+                                        <td className="px-4 py-3 text-zinc-400">{index + 1}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative h-10 w-10 flex-shrink-0">
+                                                    <Image
+                                                        src={song.cover_image || "/placeholder.svg"}
+                                                        alt={song.title}
+                                                        fill
+                                                        className="object-cover rounded"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium">{song.title}</div>
+                                                    <div className="text-sm text-zinc-400">
+                                                        {typeof song.artist === 'string' ? song.artist : song.artist?.name}
+                                                    </div>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-zinc-400">{song.album}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-zinc-400 hover:text-white"
+                                                    onClick={(e) => handleLikeSong(song.id, e)}
+                                                >
+                                                    <Heart
+                                                        className={`h-4 w-4 ${likedSongs[song.id] ? "fill-red-500 text-red-500" : ""}`}
+                                                    />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-zinc-400 hover:text-white"
+                                                    onClick={(e) => handleAddToQueue(song, e)}
+                                                >
+                                                    <PlusCircle className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-zinc-400 text-center">
+                                            {formatTime(song.duration)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Top Artists Section */}
+                    {genreData?.top_artists && genreData.top_artists.length > 0 && (
+                        <div className="mt-12">
+                            <h2 className="text-2xl font-bold mb-4">Nghệ sĩ nổi bật</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                {genreData.top_artists.map((artist, index) => (
+                                    <div key={index} className="bg-zinc-800/50 p-4 rounded-lg hover:bg-zinc-800/80 transition">
+                                        <div className="aspect-square bg-zinc-700 rounded-full flex items-center justify-center mb-4">
+                                            <User className="h-16 w-16 text-zinc-500" />
                                         </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-zinc-400">{song.album || "-"}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={(e) => handleLikeSong(song.id, e)}
-                                            >
-                                                <Heart className={`h-4 w-4 ${likedSongs[song.id] ? 'fill-red-500 text-red-500' : ''}`} />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={(e) => handleAddToQueue(song, e)}
-                                            >
-                                                <PlusCircle className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center text-zinc-400">
-                                        {formatTime(song.duration)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                        <h3 className="font-medium text-center truncate">{artist.name}</h3>
+                                        <p className="text-sm text-zinc-400 text-center">{artist.songs_count} bài hát</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="text-center py-10">

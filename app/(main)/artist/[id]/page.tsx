@@ -12,6 +12,7 @@ import { usePlayer } from "@/components/player/PlayerContext"
 import { SongCard } from "@/components/music/SongCard"
 import { AlbumCard } from "@/components/music/AlbumCard"
 import postmanApi from "@/lib/api/postman"
+import { api } from "@/lib/api"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface Artist {
@@ -127,7 +128,7 @@ export default function ArtistPage({ params }: { params: { id: string } }) {
                 } else {
                     // Có thể tìm kiếm album riêng
                     try {
-                        const albumsResponse = await postmanApi.music.getAlbums()
+                        const albumsResponse = await api.albums.getAlbums()
                         if (Array.isArray(albumsResponse)) {
                             albumsData = albumsResponse
                                 .filter((album: any) => {

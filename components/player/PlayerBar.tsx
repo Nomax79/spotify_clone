@@ -9,6 +9,7 @@ import { usePlayer } from "./PlayerContext"
 import { toast } from "@/components/ui/use-toast"
 import postmanApi from "@/lib/api/postman"
 import { SongType } from "@/components/music/SongCard"
+import { api } from "@/lib/api"
 
 export function PlayerBar() {
     const {
@@ -277,7 +278,7 @@ export function PlayerBar() {
             setDownloading(true);
 
             // Gọi API để tải xuống bài hát
-            await postmanApi.offline.downloadSong(currentSong.id);
+            await api.offline.downloadSong(currentSong.id);
 
             toast({
                 title: "Đã thêm vào tải xuống",
