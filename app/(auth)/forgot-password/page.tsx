@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,35 @@ export default function ForgotPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState<"request" | "reset" | "success">("request")
   const [error, setError] = useState("")
+
+  // OTP timer states
+  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 phút tính bằng giây
+  const [timerActive, setTimerActive] = useState(false);
+
+  // Xử lý đồng hồ đếm ngược cho OTP
+  useEffect(() => {
+    if (!timerActive) return;
+
+    if (timeLeft <= 0) {
+      // Hết thời gian
+      setError("Mã xác nhận đã hết hạn. Vui lòng yêu cầu mã mới.");
+      setTimerActive(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setTimeLeft(timeLeft - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [timeLeft, timerActive]);
+
+  // Format thời gian còn lại
+  const formatTimeLeft = () => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // Handle email request submission
   const handleRequestReset = async (e: React.FormEvent) => {
@@ -47,6 +76,10 @@ export default function ForgotPasswordPage() {
 
       // Move to the reset password step
       setCurrentStep("reset")
+
+      // Bắt đầu đếm ngược
+      setTimeLeft(15 * 60);
+      setTimerActive(true);
     } catch (err) {
       console.error("Error requesting password reset:", err)
       setError("Có lỗi xảy ra. Vui lòng thử lại sau.")
@@ -163,6 +196,11 @@ export default function ForgotPasswordPage() {
               <p className="text-sm mt-1">
                 Chúng tôi đã gửi một mã xác nhận đến <span className="font-medium">{email}</span>
               </p>
+              {timerActive && (
+                <p className="text-sm mt-1 font-bold">
+                  Mã xác nhận có hiệu lực trong: {formatTimeLeft()}
+                </p>
+              )}
             </div>
 
             <p className="text-white/70 text-center mb-6">Vui lòng nhập mã xác nhận và mật khẩu mới của bạn.</p>

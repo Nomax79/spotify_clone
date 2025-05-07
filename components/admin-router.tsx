@@ -11,10 +11,25 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && !isAdmin) {
-      router.push("/dashboard")
+    console.log("===== ADMIN ROUTE DEBUG =====")
+    console.log("- User:", user)
+    console.log("- isAdmin:", isAdmin)
+    console.log("- isLoading:", isLoading)
+
+    if (user) {
+      console.log("- Chi tiết user.is_admin:", user.is_admin)
+      console.log("- Kiểu dữ liệu is_admin:", typeof user.is_admin)
     }
-  }, [isLoading, isAdmin, router])
+
+    if (!isLoading) {
+      if (!isAdmin) {
+        console.log("Người dùng không có quyền admin, chuyển hướng về dashboard")
+        router.push("/dashboard")
+      } else {
+        console.log("Xác thực admin thành công, hiển thị nội dung admin")
+      }
+    }
+  }, [isLoading, isAdmin, router, user])
 
   if (isLoading) {
     return (
@@ -25,6 +40,7 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
   }
 
   if (!isAdmin) {
+    console.log("AdminRoute: Block rendering vì không có quyền admin")
     return null
   }
 

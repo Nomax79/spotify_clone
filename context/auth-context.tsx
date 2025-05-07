@@ -33,6 +33,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const router = useRouter()
 
+  // Refresh token tự động mỗi 45 phút (trước khi hết hạn 60 phút)
+  useEffect(() => {
+    if (!accessToken) return;
+
+    // Hàm refresh token
+    const refreshTokenPeriodically = async () => {
+      try {
+        const refreshToken = localStorage.getItem("spotify_refresh_token");
+        if (!refreshToken) return;
+
+        // Gọi API refresh token
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://spotifybackend.shop"}/api/v1/auth/token/refresh/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refresh: refreshToken }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Cập nhật token mới
+          localStorage.setItem("spotify_token", data.access);
+          if (data.refresh) {
+            localStorage.setItem("spotify_refresh_token", data.refresh);
+          }
+
+          setAccessToken(data.access);
+          console.log("Đã refresh token thành công");
+        } else {
+          console.error("Không thể refresh token");
+          // Nếu không refresh được, đăng xuất
+          logout();
+        }
+      } catch (error) {
+        console.error("Lỗi khi refresh token:", error);
+      }
+    };
+
+    // Thiết lập interval refresh token mỗi 45 phút
+    const intervalId = setInterval(refreshTokenPeriodically, 45 * 60 * 1000);
+
+    // Clear interval khi component unmount
+    return () => clearInterval(intervalId);
+  }, [accessToken]);
+
   // Check if user is logged in on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -68,10 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      console.log("===== ĐẦU QUÁ TRÌNH ĐĂNG NHẬP =====")
+      console.log("===== BẮT ĐẦU QUÁ TRÌNH ĐĂNG NHẬP =====")
       // Call the login API
       const response = await api.auth.login(email, password)
-      const { access, refresh, user: userDataResponse } = response
+      const { access, refresh } = response
       console.log("Đăng nhập thành công, nhận được token:", { access: access.substring(0, 15) + "..." })
 
       // Save tokens
@@ -80,29 +127,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(access)
       console.log("Đã lưu token vào localStorage")
 
-      // Chuyển đổi id từ number sang string để phù hợp với type User
-      const userData = {
-        ...userDataResponse,
-        id: String(userDataResponse.id)
-      }
+      // Lấy thông tin người dùng mới nhất từ API
+      try {
+        const userData = await api.auth.getUserInfo()
+        // Đảm bảo id là string để phù hợp với type User
+        const userDataFormatted = {
+          ...userData,
+          id: String(userData.id)
+        }
 
-      // Lưu user data từ response login
-      setUser(userData)
-      localStorage.setItem("spotify_user", JSON.stringify(userData))
-      console.log("Đã lưu thông tin người dùng vào state và localStorage")
+        // Lưu user data từ API getUserInfo
+        setUser(userDataFormatted)
+        localStorage.setItem("spotify_user", JSON.stringify(userDataFormatted))
+        console.log("Đã lưu thông tin người dùng từ API vào state và localStorage:", userDataFormatted)
 
-      // Kiểm tra quyền admin từ response API và chuyển hướng phù hợp
-      console.log("Kiểm tra quyền admin. is_admin =", userData.is_admin, "Kiểu dữ liệu:", typeof userData.is_admin)
+        // Debug chi tiết về quyền admin
+        console.log("Kiểm tra chi tiết quyền admin:")
+        console.log("- is_admin =", userDataFormatted.is_admin)
+        console.log("- Kiểu dữ liệu:", typeof userDataFormatted.is_admin)
+        console.log("- Giá trị chính xác:", JSON.stringify(userDataFormatted.is_admin))
 
-      if (userData.is_admin === true) {
-        console.log("User has admin privileges, redirecting to admin dashboard")
-        // Sử dụng timeout để đảm bảo chuyển hướng được thực hiện sau khi state đã được cập nhật
-        setTimeout(() => {
+        // Đảm bảo giá trị is_admin là boolean
+        const isAdminUser = userDataFormatted.is_admin === true
+
+        console.log("- Kết quả kiểm tra is_admin === true:", isAdminUser)
+
+        if (isAdminUser) {
+          console.log("User có quyền admin, chuyển hướng đến trang admin")
+          // Sử dụng timeout để đảm bảo chuyển hướng được thực hiện sau khi state đã được cập nhật
+          setTimeout(() => {
+            router.push("/admin")
+          }, 100)
+        } else {
+          console.log("User không có quyền admin, chuyển hướng đến dashboard")
+          router.push("/dashboard")
+        }
+      } catch (error) {
+        console.error("Không thể lấy thông tin người dùng từ API:", error)
+
+        // Sử dụng thông tin từ response login nếu không lấy được từ API
+        const userDataFromLogin = {
+          ...response.user,
+          id: String(response.user.id)
+        }
+
+        setUser(userDataFromLogin)
+        localStorage.setItem("spotify_user", JSON.stringify(userDataFromLogin))
+        console.log("Đã lưu thông tin người dùng từ response login vào state và localStorage:", userDataFromLogin)
+
+        // Kiểm tra quyền admin và chuyển hướng
+        const isAdminUser = userDataFromLogin.is_admin === true
+
+        if (isAdminUser) {
           router.push("/admin")
-        }, 100)
-      } else {
-        console.log("User does not have admin privileges, redirecting to dashboard")
-        router.push("/dashboard")
+        } else {
+          router.push("/dashboard")
+        }
       }
     } catch (error: any) {
       console.error("Login failed:", error)
@@ -193,16 +273,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(userData)
                 setAccessToken(token)
 
-                // Chuyển hướng dựa trên vai trò
-                console.log("OAuth login: Kiểm tra quyền admin. is_admin =", userData.is_admin, "Kiểu dữ liệu:", typeof userData.is_admin)
-                if (userData.is_admin === true) {
-                  console.log("OAuth login: User has admin privileges, redirecting to admin dashboard")
+                console.log("OAuth login: Thông tin người dùng:", userData)
+
+                // Debug chi tiết về quyền admin
+                console.log("OAuth login: Kiểm tra chi tiết quyền admin:")
+                console.log("- is_admin =", userData.is_admin)
+                console.log("- Kiểu dữ liệu:", typeof userData.is_admin)
+                console.log("- Giá trị chính xác:", JSON.stringify(userData.is_admin))
+
+                // Đảm bảo giá trị is_admin là boolean
+                const isAdminUser = userData.is_admin === true
+
+                console.log("- Kết quả kiểm tra is_admin === true:", isAdminUser)
+
+                if (isAdminUser) {
+                  console.log("OAuth login: User có quyền admin, chuyển hướng đến trang admin")
                   // Sử dụng timeout để đảm bảo chuyển hướng được thực hiện sau khi state đã được cập nhật
                   setTimeout(() => {
                     router.push("/admin")
                   }, 100)
                 } else {
-                  console.log("OAuth login: User does not have admin privileges, redirecting to dashboard")
+                  console.log("OAuth login: User không có quyền admin, chuyển hướng đến dashboard")
                   router.push("/dashboard")
                 }
               } catch (error) {
@@ -240,15 +331,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }) => {
     setIsLoading(true)
     try {
+      // Chỉ gọi API đăng ký và trả về kết quả, không tự động đăng nhập
       const response = await api.auth.register(userData)
       console.log("Registration successful")
 
-      // Đăng nhập sau khi đăng ký thành công
-      if (userData.email && userData.password) {
-        await login(userData.email, userData.password)
-      } else {
-        router.push("/login")
-      }
+      // Trả về kết quả để component xử lý tiếp
+      return response
     } catch (error) {
       console.error("Registration failed:", error)
       throw error
@@ -258,12 +346,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    localStorage.removeItem("spotify_token")
-    localStorage.removeItem("spotify_refresh_token")
-    localStorage.removeItem("spotify_user")
-    setUser(null)
-    setAccessToken(null)
-    router.push("/login")
+    // Gọi API đăng xuất (hiện đã được cập nhật để gửi refresh token)
+    api.auth.logout().then(() => {
+      // Xóa dữ liệu token và user từ state
+      setUser(null);
+      setAccessToken(null);
+
+      // Chuyển hướng về trang đăng nhập
+      router.push("/login");
+    }).catch(error => {
+      console.error("Lỗi khi đăng xuất:", error);
+
+      // Vẫn xóa dữ liệu local và chuyển hướng nếu có lỗi
+      setUser(null);
+      setAccessToken(null);
+      router.push("/login");
+    });
   }
 
   return (
@@ -271,8 +369,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading,
-        isAdmin: user?.is_admin || false,
-        isAuthenticated: user !== null,
+        isAdmin: user?.is_admin === true,
+        isAuthenticated: !!user,
         loading: isLoading,
         accessToken,
         login,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { postmanApi } from "@/lib/api/postman"
 import { useAuth } from "@/context/auth-context"
 
@@ -23,6 +23,7 @@ export default function LoginPage() {
   const { login } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -32,6 +33,25 @@ export default function LoginPage() {
       password: "",
     },
   })
+
+  // Kiểm tra xem có vừa từ trang register chuyển đến không
+  useEffect(() => {
+    const fromRegister = searchParams.get("fromRegister")
+    const email = searchParams.get("email")
+
+    if (fromRegister === "true") {
+      toast({
+        title: "Chào mừng bạn đã đăng ký thành công!",
+        description: "Vui lòng đăng nhập để bắt đầu trải nghiệm.",
+        variant: "default",
+      })
+
+      // Nếu có email từ trang đăng ký, điền sẵn vào form
+      if (email) {
+        form.setValue("email", email)
+      }
+    }
+  }, [searchParams, toast, form])
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true)

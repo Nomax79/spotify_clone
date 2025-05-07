@@ -1,12 +1,10 @@
-import type { ReactNode } from "react"
-import AdminRoute from "@/components/admin-router"
-import AdminSidebar from "@/components/admin/sidebar"
-import AdminHeader from "@/components/admin/header"
+"use client"
 
-export const metadata = {
-  title: "Admin Dashboard - Spotify Clone",
-  description: "Admin dashboard for Spotify Clone",
-}
+import { ReactNode } from "react"
+import AdminRoute from "@/components/admin-router"
+import AdminHeader from "@/components/admin/header"
+import AdminSidebar from "@/components/admin/sidebar"
+import AdminCenter from "@/components/admin/center"
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
@@ -20,7 +18,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <AdminSidebar />
 
           {/* Main content */}
-          <div className="flex-1 p-6 md:p-8 bg-zinc-900 min-h-screen overflow-auto">{children}</div>
+          <AdminCenter>
+            {children}
+          </AdminCenter>
         </div>
       </div>
     </AdminRoute>

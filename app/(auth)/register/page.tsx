@@ -27,17 +27,16 @@ import { useRouter } from "next/navigation"
 const registerSchema = z.object({
   email: z.string()
     .min(1, "Địa chỉ email là bắt buộc")
-    .email("Địa chỉ email không hợp lệ"),
+    .email("Địa chỉ email không hợp lệ")
+    .refine(email => email.endsWith('@gmail.com'), {
+      message: "Chỉ chấp nhận email có domain @gmail.com"
+    }),
   username: z.string()
     .min(3, "Tên người dùng phải có ít nhất 3 ký tự")
     .max(30, "Tên người dùng không được vượt quá 30 ký tự")
     .regex(/^[a-zA-Z0-9_]+$/, "Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới"),
   password: z.string()
-    .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
-    .regex(/[A-Z]/, "Mật khẩu phải chứa ít nhất một chữ cái viết hoa")
-    .regex(/[a-z]/, "Mật khẩu phải chứa ít nhất một chữ cái viết thường")
-    .regex(/[0-9]/, "Mật khẩu phải chứa ít nhất một chữ số")
-    .regex(/[^A-Za-z0-9]/, "Mật khẩu phải chứa ít nhất một ký tự đặc biệt"),
+    .min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
   confirmPassword: z.string(),
   // Thêm các trường không bắt buộc theo response API
   first_name: z.string().optional(),
@@ -77,7 +76,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setError("")
     try {
-      // Sử dụng trực tiếp registerUser, isLoading được xử lý trong hàm register của auth context
+      // Gọi API đăng ký và chờ kết quả
       await registerUser({
         email: data.email,
         username: data.username,
@@ -86,17 +85,18 @@ export default function RegisterPage() {
         last_name: data.last_name || undefined,
         bio: data.bio || undefined
       })
+
       // Hiển thị thông báo thành công bằng toast
       toast({
         title: "Đăng ký thành công!",
-        description: "Bạn sẽ được chuyển đến trang đăng nhập.",
+        description: "Vui lòng đăng nhập để tiếp tục.",
         variant: "default",
       })
 
-      // Chuyển hướng tới trang đăng nhập sau 2 giây
+      // Chuyển hướng tới trang đăng nhập với thông tin trạng thái đăng ký và email
       setTimeout(() => {
-        router.push("/login")
-      }, 2000)
+        router.push(`/login?fromRegister=true&email=${encodeURIComponent(data.email)}`)
+      }, 1500)
     } catch (err: any) {
       // Xử lý các lỗi từ API
       if (err.message && err.message.includes("Email already registered")) {
