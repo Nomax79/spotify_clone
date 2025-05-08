@@ -17,7 +17,8 @@ import {
   Flag,
   Shield,
   BarChart2,
-  BarChart
+  BarChart,
+  Tag
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -35,6 +36,7 @@ export default function AdminSidebar() {
     { id: "messages", label: "Tin nhắn", icon: MessageSquare, href: "/admin/messages" },
     { id: "songs", label: "Bài hát", icon: Music, href: "/admin/songs" },
     { id: "albums", label: "Album", icon: Disc, href: "/admin/albums" },
+    { id: "genres", label: "Thể loại", icon: Tag, href: "/admin/genres" },
     { id: "settings", label: "Cài đặt", icon: Settings, href: "/admin/settings" },
   ]
 
