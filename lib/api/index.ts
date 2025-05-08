@@ -10,6 +10,7 @@ import { GenresService } from "./services/GenresService";
 import { AlbumService } from "./services/AlbumService";
 import { ChatService } from "./services/ChatService";
 import { AdminService } from "./services/AdminService";
+import { AdminAlbumService } from "./services/AdminAlbumService";
 
 // Tạo instance cho mỗi service
 const authService = new AuthService();
@@ -19,6 +20,7 @@ const genresService = new GenresService();
 const albumService = new AlbumService();
 const chatService = new ChatService();
 const adminService = new AdminService();
+const adminAlbumService = new AdminAlbumService();
 
 // Export API client
 export const api = {
@@ -29,6 +31,7 @@ export const api = {
   albums: albumService,
   chat: chatService,
   admin: adminService,
+  adminAlbums: adminAlbumService,
 };
 
 // Export các type từ core
