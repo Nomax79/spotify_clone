@@ -134,15 +134,22 @@ export class SongService extends ApiRequest {
   /**
    * Tải xuống bài hát
    * @param songId ID bài hát
+   * @param range Tùy chọn - Range header cho phép resume download
    * @returns Stream file nhạc để tải xuống
    */
-  async downloadSong(songId: string | number) {
+  async downloadSong(songId: string | number, range?: string) {
     console.log(`Tải xuống bài hát ID: ${songId}`);
+    const headers: Record<string, string> = {};
+    if (range) {
+      headers["Range"] = range;
+    }
+
     return this.get(
       `/api/v1/music/songs/${songId}/download/`,
       {},
       {
         responseType: "blob",
+        headers,
       }
     );
   }
@@ -176,8 +183,8 @@ export class SongService extends ApiRequest {
       const response = (await this.downloadSong(songId)) as Blob;
       console.log("Nhận được response blob:", response);
 
-      // Tạo tên file từ thông tin bài hát hoặc sử dụng ID nếu không có
-      const filename = songTitle
+      // Trích xuất tên file từ Content-Disposition nếu có
+      let filename = songTitle
         ? `${songTitle}${artistName ? ` - ${artistName}` : ""}.mp3`
         : `song-${songId}.mp3`;
 

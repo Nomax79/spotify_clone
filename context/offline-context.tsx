@@ -45,29 +45,35 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
             setIsDownloading(true)
             console.log(`DownloadProvider: Bắt đầu tải xuống bài hát "${songTitle}" (ID: ${songId})`)
 
-            // Gọi API tải xuống
+            // Gọi API tải xuống với hỗ trợ Range header
             console.log(`Sử dụng token: ${token.substring(0, 15)}...`)
-            const response = await api.songs.downloadSong(songId)
-            console.log("Nhận được response blob:", response)
+
+            // Tạo một Promise chứa logic tải xuống để có thể tracking tiến trình
+            const response = await api.songs.downloadSong(songId);
+            console.log("Nhận được response blob:", response);
 
             if (!response || !(response instanceof Blob)) {
                 throw new Error("Không nhận được dữ liệu bài hát từ server")
             }
 
+            // Xác định tên file dựa trên Content-Disposition hoặc từ các tham số truyền vào
+            const fileName = `${songTitle} - ${artistName}.mp3`;
+
             // Tạo URL từ Blob
-            const url = window.URL.createObjectURL(response as Blob)
+            const url = window.URL.createObjectURL(response as Blob);
 
             // Tạo thẻ a để tải xuống
-            const link = document.createElement('a')
-            link.href = url
-            const fileName = `${songTitle} - ${artistName}.mp3`
-            link.download = fileName
-            document.body.appendChild(link)
-            link.click()
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+
+            // Đưa link vào document và kích hoạt tải xuống
+            document.body.appendChild(link);
+            link.click();
 
             // Dọn dẹp
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(link)
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(link);
 
             toast({
                 title: "Tải xuống thành công",

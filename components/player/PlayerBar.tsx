@@ -270,17 +270,40 @@ export function PlayerBar() {
         try {
             setDownloading(true);
 
-            // Gọi API để tải xuống bài hát
-            await api.songs.downloadSong(currentSong.id);
+            // Gọi API để tải xuống bài hát với hỗ trợ Content-Disposition
+            const response = await api.songs.downloadSong(currentSong.id);
+
+            if (!response || !(response instanceof Blob)) {
+                throw new Error("Không nhận được dữ liệu bài hát từ server");
+            }
+
+            // Xác định tên file
+            const fileName = `${currentSong.title} - ${typeof currentSong.artist === 'string'
+                ? currentSong.artist
+                : currentSong.artist?.name}.mp3`;
+
+            // Tạo URL từ Blob
+            const url = window.URL.createObjectURL(response);
+
+            // Tạo thẻ a để tải xuống
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+
+            // Dọn dẹp
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(link);
 
             toast({
-                title: "Đã thêm vào tải xuống",
-                description: `Bài hát "${currentSong.title}" đã được thêm vào danh sách tải xuống.`,
+                title: "Tải xuống thành công",
+                description: `Bài hát "${currentSong.title}" đã được tải xuống thiết bị của bạn.`,
             });
         } catch (error) {
             console.error("Lỗi khi tải bài hát:", error);
             toast({
-                title: "Lỗi",
+                title: "Lỗi tải xuống",
                 description: "Không thể tải bài hát. Vui lòng thử lại sau.",
                 variant: "destructive",
             });

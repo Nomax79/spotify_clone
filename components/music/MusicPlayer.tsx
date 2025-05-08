@@ -43,7 +43,9 @@ export function MusicPlayer({ song, songs = [], onNext, onPrevious }: MusicPlaye
         setDuration(0)
 
         if (audioRef.current) {
-            audioRef.current.src = song.file_url
+            // Sử dụng stream_url nếu có, nếu không thì dùng file_url
+            const audioUrl = song.stream_url || song.file_url;
+            audioRef.current.src = audioUrl;
             audioRef.current.load()
 
             // Tự động phát khi có bài hát mới
@@ -116,8 +118,13 @@ export function MusicPlayer({ song, songs = [], onNext, onPrevious }: MusicPlaye
 
     const handleTimeChange = (newTime: number[]) => {
         if (audioRef.current) {
-            audioRef.current.currentTime = newTime[0]
-            setCurrentTime(newTime[0])
+            const targetTime = newTime[0];
+
+            // Cập nhật giao diện ngay lập tức để trải nghiệm mượt mà hơn
+            setCurrentTime(targetTime);
+
+            // Cập nhật thời gian phát thực tế 
+            audioRef.current.currentTime = targetTime;
         }
     }
 
