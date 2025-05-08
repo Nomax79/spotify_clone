@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
+import { X, CheckCircle, AlertCircle, Info } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -43,7 +43,7 @@ const toastVariants = cva(
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants>
+  VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
@@ -54,21 +54,6 @@ const Toast = React.forwardRef<
   )
 })
 Toast.displayName = ToastPrimitives.Root.displayName
-
-const ToastAction = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Action>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Action
-    ref={ref}
-    className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
-      className
-    )}
-    {...props}
-  />
-))
-ToastAction.displayName = ToastPrimitives.Action.displayName
 
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
@@ -116,6 +101,65 @@ type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
+export type ToastType = 'success' | 'error' | 'info' | 'warning'
+
+export function useToast() {
+  const [toasts, setToasts] = React.useState<Array<{ id: string; message: string; type: ToastType }>>([])
+
+  const addToast = (message: string, type: ToastType = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9)
+    setToasts((prevToasts) => [...prevToasts, { id, message, type }])
+    return id
+  }
+
+  const removeToast = (id: string) => {
+    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id))
+  }
+
+  const success = (message: string) => addToast(message, 'success')
+  const error = (message: string) => addToast(message, 'error')
+  const warning = (message: string) => addToast(message, 'warning')
+  const info = (message: string) => addToast(message, 'info')
+
+  const ToastContainer = () => (
+    <ToastProvider>
+      <div className="fixed top-4 right-4 z-50 space-y-4">
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            variant={toast.type === 'error' ? 'destructive' : 'default'}
+            className={cn(
+              'bg-white dark:bg-zinc-950 border',
+              {
+                'border-green-500 dark:border-green-500': toast.type === 'success',
+                'border-red-500 dark:border-red-500': toast.type === 'error',
+                'border-yellow-500 dark:border-yellow-500': toast.type === 'warning',
+                'border-blue-500 dark:border-blue-500': toast.type === 'info',
+              }
+            )}
+          >
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0">
+                {toast.type === 'success' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                {toast.type === 'error' && <AlertCircle className="h-5 w-5 text-red-500" />}
+                {toast.type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-500" />}
+                {toast.type === 'info' && <Info className="h-5 w-5 text-blue-500" />}
+              </div>
+              <div className="flex-1">
+                <ToastDescription>{toast.message}</ToastDescription>
+              </div>
+            </div>
+            <ToastClose onClick={() => removeToast(toast.id)} />
+          </Toast>
+        ))}
+      </div>
+      <ToastViewport />
+    </ToastProvider>
+  )
+
+  return { success, error, warning, info, ToastContainer }
+}
+
 export {
   type ToastProps,
   type ToastActionElement,
@@ -125,5 +169,4 @@ export {
   ToastTitle,
   ToastDescription,
   ToastClose,
-  ToastAction,
 }

@@ -1,0 +1,157 @@
+"use client";
+
+import { useState } from "react";
+import { AdminSong } from "@/lib/api/services/AdminSongService";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pencil, Trash2, Search, Play, Pause } from "lucide-react";
+import Image from "next/image";
+
+interface AdminSongTableProps {
+    songs: AdminSong[];
+    loading: boolean;
+    onEdit: (song: AdminSong) => void;
+    onDelete: (song: AdminSong) => void;
+}
+
+export default function AdminSongTable({ songs, loading, onEdit, onDelete }: AdminSongTableProps) {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [playingSong, setPlayingSong] = useState<number | null>(null);
+    const audioRef = typeof Audio !== 'undefined' ? new Audio() : null;
+
+    const togglePlaySong = (songId: number) => {
+        if (playingSong === songId) {
+            setPlayingSong(null);
+            if (audioRef) {
+                audioRef.pause();
+            }
+        } else {
+            setPlayingSong(songId);
+            const songToPlay = songs.find((song) => song.id === songId);
+            if (songToPlay && audioRef) {
+                audioRef.src = songToPlay.audio_file;
+                audioRef.play().catch(err => {
+                    console.error("Lỗi khi phát nhạc:", err);
+                    setPlayingSong(null);
+                    alert("Không thể phát bài hát này.");
+                });
+            }
+        }
+    };
+
+    const formatDuration = (seconds?: number) => {
+        if (!seconds) return "0:00";
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+    };
+
+    const filteredSongs = songs.filter((song) =>
+        song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        song.artist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (song.album?.title && song.album.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (song.genre?.name && song.genre.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-4 mb-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                    <Input
+                        placeholder="Tìm kiếm bài hát..."
+                        className="pl-10 bg-zinc-800 border-zinc-700 text-white"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            <div className="bg-zinc-800 rounded-md border border-zinc-700 overflow-hidden">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="hover:bg-zinc-700/50">
+                            <TableHead className="text-zinc-400 w-12"></TableHead>
+                            <TableHead className="text-zinc-400">Bài hát</TableHead>
+                            <TableHead className="text-zinc-400">Album</TableHead>
+                            <TableHead className="text-zinc-400">Thể loại</TableHead>
+                            <TableHead className="text-zinc-400">Thời lượng</TableHead>
+                            <TableHead className="text-zinc-400">Lượt nghe</TableHead>
+                            <TableHead className="text-zinc-400 text-right">Thao tác</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center py-10 text-zinc-500">
+                                    Đang tải dữ liệu...
+                                </TableCell>
+                            </TableRow>
+                        ) : filteredSongs.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={7} className="text-center py-10 text-zinc-500">
+                                    Không tìm thấy bài hát nào
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredSongs.map((song) => (
+                                <TableRow key={song.id} className="hover:bg-zinc-700/50">
+                                    <TableCell>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="rounded-full"
+                                            onClick={() => togglePlaySong(song.id)}
+                                        >
+                                            {playingSong === song.id ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative w-10 h-10 overflow-hidden rounded">
+                                                <Image
+                                                    src={song.cover_image || "/placeholder.svg"}
+                                                    alt={song.title}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                            </div>
+                                            <div>
+                                                <div className="font-medium">{song.title}</div>
+                                                <div className="text-xs text-zinc-400">{song.artist.name}</div>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>{song.album?.title || "-"}</TableCell>
+                                    <TableCell>{song.genre?.name || "-"}</TableCell>
+                                    <TableCell>{formatDuration(song.duration)}</TableCell>
+                                    <TableCell>{song.play_count?.toLocaleString() || "0"}</TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => onEdit(song)}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-red-500"
+                                                onClick={() => onDelete(song)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    );
+} 
