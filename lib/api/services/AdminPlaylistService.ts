@@ -82,7 +82,7 @@ export class AdminPlaylistService extends BaseAdminService {
   /**
    * Lấy danh sách playlist
    * @param params Tham số tìm kiếm, lọc và phân trang
-   * @returns Danh sách playlist phân trang
+   * @returns Danh sách playlist phân trang hoặc mảng playlist
    */
   async getPlaylists(params?: {
     page?: number;
@@ -92,11 +92,21 @@ export class AdminPlaylistService extends BaseAdminService {
     user?: number;
     is_public?: boolean;
     is_collaborative?: boolean;
-  }) {
-    return this.getPaginatedData<AdminPlaylistResponse>(
-      this.BASE_URL + "/",
-      params
-    );
+  }): Promise<AdminPlaylistResponse | AdminPlaylist[]> {
+    try {
+      const response = await this.getPaginatedData<AdminPlaylistResponse>(
+        this.BASE_URL + "/",
+        params
+      );
+      return response;
+    } catch (error) {
+      // Kiểm tra nếu lỗi liên quan đến định dạng, thử gọi lại với phương thức khác
+      console.warn(
+        "Lỗi khi tải danh sách playlist với định dạng phân trang, thử lại với định dạng mảng",
+        error
+      );
+      return this.get<AdminPlaylist[]>(this.BASE_URL + "/", { params });
+    }
   }
 
   /**

@@ -1,213 +1,100 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Edit, Trash2, Music, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table"
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/components/ui/use-toast"
+import { AdminPlaylistService } from "@/lib/api/services/AdminPlaylistService"
 
-import {
-    ChevronLeft,
-    ListMusic,
-    Users,
-    Clock,
-    Pencil,
-    Trash,
-    Save,
-    UserPlus,
-    History,
-    MoreHorizontal,
-    RotateCcw,
-} from "lucide-react"
-import { api } from "@/lib/api"
-import { formatDistanceToNow, format } from "date-fns"
-import { vi } from "date-fns/locale"
-import { toast } from "sonner"
-
-export default function PlaylistDetailPage() {
-    const params = useParams<{ id: string }>()
+export default function PlaylistDetailsPage({
+    params,
+}: {
+    params: { id: string }
+}) {
     const router = useRouter()
-    const [playlist, setPlaylist] = useState<any>(null)
-    const [collaborators, setCollaborators] = useState<any[]>([])
-    const [editHistory, setEditHistory] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
-    const [editing, setEditing] = useState(false)
-    const [editedPlaylist, setEditedPlaylist] = useState<any>({})
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-    const [showAddCollaboratorDialog, setShowAddCollaboratorDialog] = useState(false)
-    const [newCollaborator, setNewCollaborator] = useState({ user: "", role: "EDITOR" })
-    const [showRestoreDialog, setShowRestoreDialog] = useState(false)
-    const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null)
-
+    const { toast } = useToast()
     const playlistId = parseInt(params.id, 10)
+    const [playlist, setPlaylist] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+    const playlistService = new AdminPlaylistService()
 
     useEffect(() => {
-        const fetchPlaylistDetails = async () => {
+        const fetchPlaylist = async () => {
             try {
                 setLoading(true)
-                const playlistData = await api.admin.getCollaborativePlaylistDetail(playlistId)
-                setPlaylist(playlistData)
-                setEditedPlaylist({
-                    name: playlistData.name,
-                    description: playlistData.description,
-                    is_public: playlistData.is_public
-                })
-
-                // Lấy danh sách người cộng tác
-                const collaboratorsData = await api.admin.getPlaylistCollaborators(playlistId)
-                setCollaborators(collaboratorsData || [])
-
-                // Lấy lịch sử chỉnh sửa
-                const historyData = await api.admin.getPlaylistEditHistory(playlistId)
-                setEditHistory(historyData || [])
+                const data = await playlistService.getPlaylist(playlistId)
+                setPlaylist(data)
             } catch (error) {
-                console.error("Error fetching playlist details:", error)
-                toast.error("Lỗi khi tải thông tin playlist")
+                console.error("Lỗi khi tải thông tin playlist:", error)
+                toast({
+                    title: "Lỗi",
+                    description: "Không thể tải thông tin playlist. Vui lòng thử lại sau.",
+                    variant: "destructive",
+                })
             } finally {
                 setLoading(false)
             }
         }
 
-        if (playlistId) {
-            fetchPlaylistDetails()
-        }
+        fetchPlaylist()
     }, [playlistId])
-
-    const handleSaveChanges = async () => {
-        try {
-            const updatedPlaylist = await api.admin.updateCollaborativePlaylist(playlistId, editedPlaylist)
-            setPlaylist({ ...playlist, ...updatedPlaylist })
-            setEditing(false)
-            toast.success("Cập nhật playlist thành công")
-        } catch (error) {
-            console.error("Error updating playlist:", error)
-            toast.error("Lỗi khi cập nhật playlist")
-        }
-    }
 
     const handleDeletePlaylist = async () => {
         try {
-            await api.admin.deleteCollaborativePlaylist(playlistId)
-            setShowDeleteDialog(false)
-            toast.success("Xóa playlist thành công")
+            await playlistService.deletePlaylist(playlistId)
+            toast({
+                title: "Thành công",
+                description: "Đã xóa playlist thành công",
+            })
             router.push("/admin/playlists")
         } catch (error) {
-            console.error("Error deleting playlist:", error)
-            toast.error("Lỗi khi xóa playlist")
-        }
-    }
-
-    const handleAddCollaborator = async () => {
-        try {
-            if (!newCollaborator.user) {
-                toast.error("Vui lòng nhập ID người dùng")
-                return
-            }
-
-            const userId = parseInt(newCollaborator.user, 10)
-            if (isNaN(userId)) {
-                toast.error("ID người dùng không hợp lệ")
-                return
-            }
-
-            const response = await api.admin.addPlaylistCollaborator(playlistId, {
-                user: userId,
-                role: newCollaborator.role
+            console.error("Lỗi khi xóa playlist:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể xóa playlist. Vui lòng thử lại sau.",
+                variant: "destructive",
             })
-
-            // Cập nhật danh sách người cộng tác
-            const collaboratorsData = await api.admin.getPlaylistCollaborators(playlistId)
-            setCollaborators(collaboratorsData || [])
-
-            setShowAddCollaboratorDialog(false)
-            setNewCollaborator({ user: "", role: "EDITOR" })
-            toast.success("Thêm người cộng tác thành công")
-        } catch (error) {
-            console.error("Error adding collaborator:", error)
-            toast.error("Lỗi khi thêm người cộng tác")
         }
     }
 
-    const handleRemoveCollaborator = async (userId: number) => {
-        try {
-            await api.admin.removePlaylistCollaborator(playlistId, userId)
-
-            // Cập nhật danh sách người cộng tác
-            setCollaborators(collaborators.filter(c => c.user.id !== userId))
-            toast.success("Xóa người cộng tác thành công")
-        } catch (error) {
-            console.error("Error removing collaborator:", error)
-            toast.error("Lỗi khi xóa người cộng tác")
-        }
-    }
-
-    const handleChangeCollaboratorRole = async (userId: number, newRole: string) => {
-        try {
-            await api.admin.changeCollaboratorRole(playlistId, userId, {
-                role: newRole
-            })
-
-            // Cập nhật danh sách người cộng tác
-            setCollaborators(collaborators.map(c => {
-                if (c.user.id === userId) {
-                    return { ...c, role: newRole }
-                }
-                return c
-            }))
-            toast.success("Thay đổi vai trò thành công")
-        } catch (error) {
-            console.error("Error changing collaborator role:", error)
-            toast.error("Lỗi khi thay đổi vai trò")
-        }
-    }
-
-    const handleRestorePlaylist = async () => {
-        if (!selectedHistoryId) return
-
-        try {
-            await api.admin.restorePlaylist(playlistId, selectedHistoryId)
-
-            // Cập nhật thông tin playlist
-            const playlistData = await api.admin.getCollaborativePlaylistDetail(playlistId)
-            setPlaylist(playlistData)
-            setEditedPlaylist({
-                name: playlistData.name,
-                description: playlistData.description,
-                is_public: playlistData.is_public
-            })
-
-            setShowRestoreDialog(false)
-            setSelectedHistoryId(null)
-            toast.success("Khôi phục playlist thành công")
-        } catch (error) {
-            console.error("Error restoring playlist:", error)
-            toast.error("Lỗi khi khôi phục playlist")
-        }
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })
     }
 
     if (loading) {
         return (
-            <div className="h-screen flex items-center justify-center">
+            <div className="p-6 flex items-center justify-center h-full">
                 <div className="animate-spin h-8 w-8 border-t-2 border-green-500 rounded-full"></div>
             </div>
         )
@@ -215,66 +102,76 @@ export default function PlaylistDetailPage() {
 
     if (!playlist) {
         return (
-            <div className="space-y-6">
-                <Button variant="ghost" onClick={() => router.back()}>
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Quay lại
+            <div className="p-6">
+                <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 mb-4"
+                    onClick={() => router.push("/admin/playlists")}
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Quay lại danh sách
                 </Button>
+
                 <div className="text-center py-12">
-                    <ListMusic className="h-16 w-16 mx-auto text-zinc-600 mb-4" />
-                    <h2 className="text-2xl font-semibold mb-2">Không tìm thấy playlist</h2>
-                    <p className="text-zinc-400">Playlist không tồn tại hoặc đã bị xóa</p>
+                    <h2 className="text-xl font-semibold mb-2">Không tìm thấy playlist</h2>
+                    <p className="text-gray-500 mb-4">Playlist không tồn tại hoặc đã bị xóa</p>
+                    <Button onClick={() => router.push("/admin/playlists")}>
+                        Quay lại danh sách
+                    </Button>
                 </div>
             </div>
         )
     }
 
+    const secondsToTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60)
+        const secs = seconds % 60
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+    }
+
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                    <Button variant="ghost" onClick={() => router.back()}>
-                        <ChevronLeft className="mr-2 h-4 w-4" />
-                        Quay lại
-                    </Button>
-                    <h1 className="text-3xl font-bold ml-4">Chi tiết Playlist Cộng tác</h1>
-                </div>
+        <div className="p-6 space-y-6">
+            <Button
+                variant="ghost"
+                className="flex items-center gap-2 mb-4"
+                onClick={() => router.push("/admin/playlists")}
+            >
+                <ArrowLeft className="h-4 w-4" />
+                Quay lại danh sách
+            </Button>
 
-                <div className="flex gap-2">
-                    {editing ? (
-                        <>
-                            <Button onClick={() => setEditing(false)} variant="outline">
-                                Hủy
-                            </Button>
-                            <Button onClick={handleSaveChanges}>
-                                <Save className="mr-2 h-4 w-4" />
-                                Lưu thay đổi
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button variant="outline" onClick={() => setEditing(true)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Chỉnh sửa
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={() => setShowDeleteDialog(true)}
-                            >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Xóa
-                            </Button>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Thông tin cơ bản playlist */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1">
-                    <Card className="bg-zinc-800 border-zinc-700 text-white">
-                        <div className="p-6">
-                            <div className="aspect-square bg-zinc-700 rounded-md overflow-hidden mb-4 flex items-center justify-center">
+            <div className="flex flex-col lg:flex-row gap-6">
+                {/* Thông tin playlist */}
+                <div className="lg:w-1/3">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <CardTitle className="text-xl mb-1">{playlist.name}</CardTitle>
+                                    <CardDescription>
+                                        Tạo bởi <span className="font-medium">{playlist.user.username}</span>
+                                    </CardDescription>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => router.push(`/admin/playlists/${playlistId}/edit`)}
+                                    >
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        size="icon"
+                                        onClick={() => setDeleteDialogOpen(true)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="aspect-square w-full overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
                                 {playlist.cover_image ? (
                                     <img
                                         src={playlist.cover_image}
@@ -282,245 +179,182 @@ export default function PlaylistDetailPage() {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <ListMusic className="h-16 w-16 text-zinc-600" />
+                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                        <Music className="h-16 w-16" />
+                                    </div>
                                 )}
                             </div>
 
-                            {editing ? (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-sm font-medium mb-1 block">Tên playlist</label>
-                                        <Input
-                                            value={editedPlaylist.name}
-                                            onChange={(e) => setEditedPlaylist({ ...editedPlaylist, name: e.target.value })}
-                                            className="bg-zinc-700 border-zinc-600"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="text-sm font-medium mb-1 block">Mô tả</label>
-                                        <Textarea
-                                            value={editedPlaylist.description || ""}
-                                            onChange={(e) => setEditedPlaylist({ ...editedPlaylist, description: e.target.value })}
-                                            className="bg-zinc-700 border-zinc-600 min-h-[100px]"
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            id="is_public"
-                                            checked={editedPlaylist.is_public}
-                                            onChange={(e) => setEditedPlaylist({ ...editedPlaylist, is_public: e.target.checked })}
-                                            className="mr-2"
-                                        />
-                                        <label htmlFor="is_public">Công khai</label>
-                                    </div>
+                            <div className="grid gap-1">
+                                <div className="text-sm font-medium">Thông tin</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    {playlist.description || "Không có mô tả"}
                                 </div>
-                            ) : (
-                                <>
-                                    <h2 className="text-2xl font-bold mb-2">{playlist.name}</h2>
-                                    <p className="text-zinc-400 mb-4">{playlist.description || "Không có mô tả"}</p>
+                            </div>
 
-                                    <div className="flex items-center mb-4">
-                                        <Badge variant={playlist.is_public ? "default" : "outline"}>
-                                            {playlist.is_public ? "Công khai" : "Riêng tư"}
-                                        </Badge>
-                                        <Badge variant="outline" className="ml-2">
-                                            {playlist.is_collaborative ? "Cộng tác" : "Cá nhân"}
-                                        </Badge>
-                                    </div>
+                            <Separator />
 
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Ngày tạo:</span>
-                                            <span>{format(new Date(playlist.created_at), 'dd/MM/yyyy HH:mm')}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Cập nhật lần cuối:</span>
-                                            <span>{format(new Date(playlist.updated_at), 'dd/MM/yyyy HH:mm')}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Người tạo:</span>
-                                            <span>{playlist.user?.username || "Không rõ"}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Số bài hát:</span>
-                                            <span>{playlist.song_count || 0}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Người cộng tác:</span>
-                                            <span>{collaborators.length}</span>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                            <div className="grid gap-2">
+                                <div className="text-sm font-medium">Trạng thái</div>
+                                <div className="flex gap-2">
+                                    <Badge variant={playlist.is_public ? "default" : "outline"}>
+                                        {playlist.is_public ? "Công khai" : "Riêng tư"}
+                                    </Badge>
+                                    <Badge variant={playlist.is_collaborative ? "secondary" : "outline"}>
+                                        {playlist.is_collaborative ? "Cộng tác" : "Cá nhân"}
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="grid gap-2">
+                                <div className="text-sm font-medium">Thời gian</div>
+                                <div className="grid grid-cols-2 gap-1">
+                                    <div className="text-sm text-gray-500">Tạo lúc</div>
+                                    <div className="text-sm">{formatDate(playlist.created_at)}</div>
+                                    {playlist.updated_at && (
+                                        <>
+                                            <div className="text-sm text-gray-500">Cập nhật lúc</div>
+                                            <div className="text-sm">{formatDate(playlist.updated_at)}</div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="grid gap-2">
+                                <div className="text-sm font-medium">Thông tin bổ sung</div>
+                                <div className="grid grid-cols-2 gap-1">
+                                    <div className="text-sm text-gray-500">Số lượng bài hát</div>
+                                    <div className="text-sm">{playlist.songs ? playlist.songs.length : 0}</div>
+                                    <div className="text-sm text-gray-500">Lượt theo dõi</div>
+                                    <div className="text-sm">{playlist.followers_count}</div>
+                                </div>
+                            </div>
+                        </CardContent>
                     </Card>
                 </div>
 
-                <div className="md:col-span-2">
-                    <Tabs defaultValue="collaborators" className="space-y-4">
-                        <TabsList className="bg-zinc-800">
-                            <TabsTrigger value="collaborators" className="data-[state=active]:bg-zinc-700">
-                                Người cộng tác
+                {/* Nội dung tab */}
+                <div className="lg:w-2/3 space-y-4">
+                    <Tabs defaultValue="songs">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="songs" className="flex items-center gap-2">
+                                <Music className="h-4 w-4" />
+                                Bài hát
                             </TabsTrigger>
-                            <TabsTrigger value="history" className="data-[state=active]:bg-zinc-700">
-                                Lịch sử chỉnh sửa
+                            <TabsTrigger value="collaborators" className="flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                Cộng tác viên
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="collaborators">
-                            <Card className="bg-zinc-800 border-zinc-700 text-white">
-                                <CardHeader className="flex flex-row items-center justify-between">
-                                    <div>
-                                        <CardTitle>Danh sách người cộng tác</CardTitle>
-                                        <CardDescription className="text-zinc-400">
-                                            Các người dùng được phép chỉnh sửa playlist này
-                                        </CardDescription>
-                                    </div>
-                                    <Button onClick={() => setShowAddCollaboratorDialog(true)}>
-                                        <UserPlus className="mr-2 h-4 w-4" />
-                                        Thêm người cộng tác
-                                    </Button>
+                        <TabsContent value="songs" className="pt-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Danh sách bài hát</CardTitle>
+                                    <CardDescription>
+                                        {playlist.songs ? playlist.songs.length : 0} bài hát trong playlist
+                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {collaborators.length === 0 ? (
-                                        <div className="text-center py-8 text-zinc-500">
-                                            Không có người cộng tác nào
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {collaborators.map((collaborator) => (
-                                                <div
-                                                    key={collaborator.user.id}
-                                                    className="flex items-center justify-between p-3 bg-zinc-700 rounded-md"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-zinc-600 flex items-center justify-center">
-                                                            {collaborator.user.avatar ? (
-                                                                <img
-                                                                    src={collaborator.user.avatar}
-                                                                    alt={collaborator.user.username}
-                                                                    className="w-full h-full object-cover rounded-full"
-                                                                />
-                                                            ) : (
-                                                                <Users className="h-5 w-5 text-zinc-400" />
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium">{collaborator.user.username}</div>
-                                                            <div className="text-xs text-zinc-400">{collaborator.user.email}</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-2">
-                                                        <Badge variant="outline" className="capitalize">
-                                                            {collaborator.role.toLowerCase()}
-                                                        </Badge>
-
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon">
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700">
-                                                                <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                                                                <DropdownMenuSeparator className="bg-zinc-700" />
-
-                                                                <DropdownMenuItem
-                                                                    className="cursor-pointer"
-                                                                    onClick={() => handleChangeCollaboratorRole(
-                                                                        collaborator.user.id,
-                                                                        collaborator.role === "EDITOR" ? "VIEWER" : "EDITOR"
+                                    {playlist.songs && playlist.songs.length > 0 ? (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-12">#</TableHead>
+                                                    <TableHead>Tiêu đề</TableHead>
+                                                    <TableHead>Nghệ sĩ</TableHead>
+                                                    <TableHead className="text-right">Thời lượng</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {playlist.songs.map((song: any, index: number) => (
+                                                    <TableRow key={song.id}>
+                                                        <TableCell>{index + 1}</TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
+                                                                    {song.cover_image ? (
+                                                                        <img
+                                                                            src={song.cover_image}
+                                                                            alt={song.title}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                            <Music className="h-4 w-4" />
+                                                                        </div>
                                                                     )}
-                                                                >
-                                                                    Đổi vai trò sang {collaborator.role === "EDITOR" ? "Viewer" : "Editor"}
-                                                                </DropdownMenuItem>
-
-                                                                <DropdownMenuItem
-                                                                    className="cursor-pointer text-red-500"
-                                                                    onClick={() => handleRemoveCollaborator(collaborator.user.id)}
-                                                                >
-                                                                    Xóa người cộng tác
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                                </div>
+                                                                <div className="font-medium">{song.title}</div>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>{song.artist}</TableCell>
+                                                        <TableCell className="text-right">{secondsToTime(song.duration)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    ) : (
+                                        <div className="text-center py-12">
+                                            <Music className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                                            <h3 className="text-lg font-medium mb-2">Không có bài hát nào</h3>
+                                            <p className="text-gray-500 mb-4">Playlist này chưa có bài hát nào</p>
                                         </div>
                                     )}
                                 </CardContent>
                             </Card>
                         </TabsContent>
 
-                        <TabsContent value="history">
-                            <Card className="bg-zinc-800 border-zinc-700 text-white">
+                        <TabsContent value="collaborators" className="pt-4">
+                            <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <History className="h-5 w-5" />
-                                        <span>Lịch sử chỉnh sửa playlist</span>
-                                    </CardTitle>
-                                    <CardDescription className="text-zinc-400">
-                                        Các thay đổi đã được thực hiện trên playlist này
+                                    <CardTitle className="text-lg">Danh sách cộng tác viên</CardTitle>
+                                    <CardDescription>
+                                        {playlist.collaborators ? playlist.collaborators.length : 0} người cộng tác
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {editHistory.length === 0 ? (
-                                        <div className="text-center py-8 text-zinc-500">
-                                            Không có lịch sử chỉnh sửa
-                                        </div>
+                                    {playlist.collaborators && playlist.collaborators.length > 0 ? (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Tên người dùng</TableHead>
+                                                    <TableHead>Vai trò</TableHead>
+                                                    <TableHead>Thêm bởi</TableHead>
+                                                    <TableHead>Thời gian thêm</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {playlist.collaborators.map((collaborator: any) => (
+                                                    <TableRow key={collaborator.id}>
+                                                        <TableCell>
+                                                            <div className="font-medium">{collaborator.user.username}</div>
+                                                            <div className="text-xs text-gray-500">ID: {collaborator.user.id}</div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={collaborator.role === "EDITOR" ? "default" : "outline"}>
+                                                                {collaborator.role === "EDITOR" ? "Biên tập viên" : "Người xem"}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>{collaborator.added_by.username}</TableCell>
+                                                        <TableCell>{formatDate(collaborator.added_at)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     ) : (
-                                        <div className="space-y-4">
-                                            {editHistory.map((history, index) => (
-                                                <div
-                                                    key={history.id}
-                                                    className="p-4 bg-zinc-700 rounded-md"
-                                                >
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-zinc-600 flex items-center justify-center">
-                                                                <Clock className="h-4 w-4 text-zinc-400" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-medium">{history.edited_by}</div>
-                                                                <div className="text-xs text-zinc-400">
-                                                                    {format(new Date(history.timestamp), 'dd/MM/yyyy HH:mm')}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="text-xs"
-                                                            onClick={() => {
-                                                                setSelectedHistoryId(history.id)
-                                                                setShowRestoreDialog(true)
-                                                            }}
-                                                        >
-                                                            <RotateCcw className="mr-1 h-3 w-3" />
-                                                            Khôi phục
-                                                        </Button>
-                                                    </div>
-
-                                                    <div className="space-y-2 text-sm">
-                                                        {history.changes.map((change: any, changeIndex: number) => (
-                                                            <div key={changeIndex} className="flex items-start gap-2">
-                                                                <div className="w-2 h-2 rounded-full bg-zinc-500 mt-1.5"></div>
-                                                                <div>
-                                                                    <span className="text-zinc-300">{change.field}:</span>{" "}
-                                                                    <span className="text-red-400">{change.old_value || "(trống)"}</span>{" "}
-                                                                    <span className="text-zinc-500">→</span>{" "}
-                                                                    <span className="text-green-400">{change.new_value || "(trống)"}</span>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                        <div className="text-center py-12">
+                                            <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                                            <h3 className="text-lg font-medium mb-2">Không có cộng tác viên</h3>
+                                            <p className="text-gray-500 mb-4">
+                                                {playlist.is_collaborative
+                                                    ? "Playlist này chưa có người cộng tác nào"
+                                                    : "Playlist không ở chế độ cộng tác"}
+                                            </p>
                                         </div>
                                     )}
                                 </CardContent>
@@ -530,96 +364,22 @@ export default function PlaylistDetailPage() {
                 </div>
             </div>
 
-            {/* Dialog xóa playlist */}
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent className="bg-zinc-800 border-zinc-700 text-white">
-                    <DialogHeader>
-                        <DialogTitle>Xác nhận xóa playlist</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
-                            Bạn có chắc chắn muốn xóa playlist này? Hành động này không thể hoàn tác.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="p-4 bg-zinc-700 rounded-md my-4">
-                        <h3 className="font-medium mb-1">{playlist.name}</h3>
-                        <p className="text-sm text-zinc-400">Ngày tạo: {format(new Date(playlist.created_at), 'dd/MM/yyyy')}</p>
-                        <p className="text-sm text-zinc-400">Người tạo: {playlist.user?.username || "Không rõ"}</p>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-                            Hủy
-                        </Button>
-                        <Button variant="destructive" onClick={handleDeletePlaylist}>
-                            Xác nhận xóa
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Dialog thêm người cộng tác */}
-            <Dialog open={showAddCollaboratorDialog} onOpenChange={setShowAddCollaboratorDialog}>
-                <DialogContent className="bg-zinc-800 border-zinc-700 text-white">
-                    <DialogHeader>
-                        <DialogTitle>Thêm người cộng tác</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
-                            Thêm người dùng vào playlist cộng tác này
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div>
-                            <label className="text-sm font-medium mb-1 block">ID người dùng</label>
-                            <Input
-                                value={newCollaborator.user}
-                                onChange={(e) => setNewCollaborator({ ...newCollaborator, user: e.target.value })}
-                                placeholder="Nhập ID người dùng"
-                                className="bg-zinc-700 border-zinc-600"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-sm font-medium mb-1 block">Vai trò</label>
-                            <select
-                                value={newCollaborator.role}
-                                onChange={(e) => setNewCollaborator({ ...newCollaborator, role: e.target.value })}
-                                className="w-full bg-zinc-700 border-zinc-600 rounded-md p-2"
-                            >
-                                <option value="EDITOR">Editor (Có thể chỉnh sửa)</option>
-                                <option value="VIEWER">Viewer (Chỉ xem)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowAddCollaboratorDialog(false)}>
-                            Hủy
-                        </Button>
-                        <Button onClick={handleAddCollaborator}>
-                            Thêm
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Dialog khôi phục playlist */}
-            <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
-                <DialogContent className="bg-zinc-800 border-zinc-700 text-white">
-                    <DialogHeader>
-                        <DialogTitle>Khôi phục phiên bản trước</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
-                            Bạn có chắc chắn muốn khôi phục playlist về phiên bản này?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <p className="text-sm">Việc này sẽ hoàn tác tất cả các thay đổi sau phiên bản được chọn.</p>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowRestoreDialog(false)}>
-                            Hủy
-                        </Button>
-                        <Button onClick={handleRestorePlaylist}>
-                            Xác nhận khôi phục
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Xác nhận xóa playlist</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Hành động này không thể hoàn tác. Playlist "{playlist.name}" sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Hủy</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeletePlaylist} className="bg-red-500 hover:bg-red-600">
+                            Xóa
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 } 

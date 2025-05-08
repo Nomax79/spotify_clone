@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -19,14 +19,43 @@ import {
   BarChart2,
   BarChart,
   Tag,
-  Mic
+  Mic,
+  PlaySquare
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  onToggle?: (collapsed: boolean) => void
+}
+
+export default function AdminSidebar({ onToggle }: AdminSidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+
+  // Khởi tạo trạng thái từ localStorage
+  useEffect(() => {
+    const storedState = localStorage.getItem('admin-sidebar-collapsed')
+    if (storedState) {
+      setCollapsed(storedState === 'true')
+    }
+  }, [])
+
+  const toggleCollapsed = () => {
+    const newCollapsedState = !collapsed
+    setCollapsed(newCollapsedState)
+
+    // Lưu trạng thái vào localStorage
+    localStorage.setItem('admin-sidebar-collapsed', String(newCollapsedState))
+
+    // Gọi callback nếu có
+    if (onToggle) {
+      onToggle(newCollapsedState)
+    }
+
+    // Kích hoạt custom event để thông báo cho các component khác
+    window.dispatchEvent(new Event('admin-sidebar-toggle'))
+  }
 
   const tabs = [
     { id: "dashboard", label: "Bảng điều khiển", icon: LayoutDashboard, href: "/admin" },
@@ -34,10 +63,10 @@ export default function AdminSidebar() {
     { id: "artists", label: "Nghệ sĩ", icon: Mic, href: "/admin/artists" },
     { id: "topSongs", label: "Top bài hát", icon: Music, href: "/admin/reports/top-songs" },
     { id: "topGenres", label: "Top thể loại", icon: BarChart, href: "/admin/reports/top-genres" },
-    { id: "playlists", label: "Quản lý playlist", icon: ListMusic, href: "/admin/playlists" },
     { id: "messages", label: "Tin nhắn", icon: MessageSquare, href: "/admin/messages" },
     { id: "songs", label: "Bài hát", icon: Music, href: "/admin/songs" },
     { id: "albums", label: "Album", icon: Disc, href: "/admin/albums" },
+    { id: "playlists", label: "Playlist", icon: PlaySquare, href: "/admin/playlists" },
     { id: "genres", label: "Thể loại", icon: Tag, href: "/admin/genres" },
     { id: "settings", label: "Cài đặt", icon: Settings, href: "/admin/settings" },
   ]
@@ -56,6 +85,7 @@ export default function AdminSidebar() {
     <div
       className={cn(
         "bg-zinc-900 border-r border-zinc-800 transition-all duration-300 relative",
+        "fixed top-16 left-0 h-[calc(100vh-4rem)] overflow-y-auto z-30",
         collapsed ? "w-20" : "w-64",
       )}
     >
@@ -64,7 +94,7 @@ export default function AdminSidebar() {
         variant="ghost"
         size="icon"
         className="absolute -right-3 top-6 rounded-full bg-zinc-800 border border-zinc-700 z-10"
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={toggleCollapsed}
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </Button>
