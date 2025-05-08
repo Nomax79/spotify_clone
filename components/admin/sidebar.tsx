@@ -29,15 +29,12 @@ export default function AdminSidebar() {
   const tabs = [
     { id: "dashboard", label: "Bảng điều khiển", icon: LayoutDashboard, href: "/admin" },
     { id: "users", label: "Người dùng", icon: Users, href: "/admin/users" },
-    { id: "reports", label: "Báo cáo", icon: Flag, href: "/admin/reports" },
     { id: "topSongs", label: "Top bài hát", icon: Music, href: "/admin/reports/top-songs" },
     { id: "topGenres", label: "Top thể loại", icon: BarChart, href: "/admin/reports/top-genres" },
     { id: "playlists", label: "Quản lý playlist", icon: ListMusic, href: "/admin/playlists" },
     { id: "messages", label: "Tin nhắn", icon: MessageSquare, href: "/admin/messages" },
-    { id: "restrictions", label: "Hạn chế chat", icon: Shield, href: "/admin/restrictions" },
     { id: "songs", label: "Bài hát", icon: Music, href: "/admin/songs" },
     { id: "albums", label: "Album", icon: Disc, href: "/admin/albums" },
-    { id: "error-codes", label: "Mã lỗi", icon: AlertCircle, href: "/admin/error-codes" },
     { id: "settings", label: "Cài đặt", icon: Settings, href: "/admin/settings" },
   ]
 
