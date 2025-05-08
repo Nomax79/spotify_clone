@@ -86,7 +86,7 @@ export class AdminArtistService extends BaseAdminService {
   /**
    * Lấy danh sách nghệ sĩ
    * @param params Tham số tìm kiếm, lọc và phân trang
-   * @returns Danh sách nghệ sĩ phân trang
+   * @returns Danh sách nghệ sĩ phân trang hoặc mảng nghệ sĩ đơn giản
    */
   async getArtists(params?: {
     page?: number;
@@ -96,10 +96,41 @@ export class AdminArtistService extends BaseAdminService {
     genre_id?: number;
     is_featured?: boolean;
   }) {
-    return this.getPaginatedData<AdminArtistResponse>(
-      this.BASE_URL + "/",
-      params
-    );
+    try {
+      const response = await this.getPaginatedData<
+        AdminArtistResponse | AdminArtist[]
+      >(this.BASE_URL + "/", params);
+
+      // Kiểm tra nếu response là mảng (API trả về mảng đơn giản)
+      if (Array.isArray(response)) {
+        // Trả về định dạng giống như AdminArtistResponse để frontend xử lý nhất quán
+        return {
+          count: response.length,
+          next: null,
+          previous: null,
+          results: response.map((artist) => ({
+            ...artist,
+            // Thêm các trường mặc định nếu không có
+            songs_count: artist.songs_count || 0,
+            albums_count: artist.albums_count || 0,
+            is_featured: artist.is_featured || false,
+            created_at: artist.created_at || new Date().toISOString(),
+          })),
+        } as AdminArtistResponse;
+      }
+
+      // Nếu không, trả về response như bình thường
+      return response as AdminArtistResponse;
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách nghệ sĩ:", error);
+      // Trả về một đối tượng rỗng để tránh lỗi undefined
+      return {
+        count: 0,
+        next: null,
+        previous: null,
+        results: [],
+      } as AdminArtistResponse;
+    }
   }
 
   /**

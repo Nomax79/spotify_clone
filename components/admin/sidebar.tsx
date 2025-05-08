@@ -18,7 +18,8 @@ import {
   Shield,
   BarChart2,
   BarChart,
-  Tag
+  Tag,
+  Mic
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -30,6 +31,7 @@ export default function AdminSidebar() {
   const tabs = [
     { id: "dashboard", label: "Bảng điều khiển", icon: LayoutDashboard, href: "/admin" },
     { id: "users", label: "Người dùng", icon: Users, href: "/admin/users" },
+    { id: "artists", label: "Nghệ sĩ", icon: Mic, href: "/admin/artists" },
     { id: "topSongs", label: "Top bài hát", icon: Music, href: "/admin/reports/top-songs" },
     { id: "topGenres", label: "Top thể loại", icon: BarChart, href: "/admin/reports/top-genres" },
     { id: "playlists", label: "Quản lý playlist", icon: ListMusic, href: "/admin/playlists" },
