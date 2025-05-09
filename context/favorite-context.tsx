@@ -23,6 +23,7 @@ type FavoriteContextType = {
     addToFavorites: (song: SongType) => Promise<boolean>
     removeFromFavorites: (song: SongType) => Promise<boolean>
     refreshFavorites: () => Promise<void>
+    fetchUserLibrary: () => Promise<any>
 }
 
 const FavoriteContext = createContext<FavoriteContextType | undefined>(undefined)
@@ -32,6 +33,34 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
     const [favoriteSongs, setFavoriteSongs] = useState<SongType[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+    // Thêm phương thức fetchUserLibrary
+    const fetchUserLibrary = useCallback(async () => {
+        if (!isAuthenticated) return null
+
+        try {
+            const response = await fetch('/api/v1/music/library/', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('spotify_token')}`
+                }
+            })
+
+            if (!response.ok) {
+                throw new Error('Không thể lấy thư viện người dùng')
+            }
+
+            const data = await response.json()
+            return data
+        } catch (error) {
+            console.error('Lỗi khi lấy thư viện người dùng:', error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể lấy thư viện người dùng. Vui lòng thử lại sau.",
+                variant: "destructive",
+            })
+            return null
+        }
+    }, [isAuthenticated])
 
     // Lấy danh sách bài hát yêu thích khi người dùng đăng nhập
     useEffect(() => {
@@ -120,8 +149,18 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
             return false
         }
 
+        // Kiểm tra song_id hợp lệ
+        if (!song?.id) {
+            toast({
+                title: "Lỗi",
+                description: "ID bài hát không hợp lệ",
+                variant: "destructive",
+            })
+            return false
+        }
+
         try {
-            await postmanApi.music.likeSong(song.id.toString())
+            await postmanApi.music.addToFavorites(song.id.toString())
 
             // Cập nhật state và cache
             const updatedFavorites = [...favoriteSongs, song]
@@ -149,8 +188,18 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
     const removeFromFavorites = useCallback(async (song: SongType) => {
         if (!isAuthenticated) return false
 
+        // Kiểm tra song_id hợp lệ
+        if (!song?.id) {
+            toast({
+                title: "Lỗi",
+                description: "ID bài hát không hợp lệ",
+                variant: "destructive",
+            })
+            return false
+        }
+
         try {
-            await postmanApi.music.unlikeSong(song.id.toString())
+            await postmanApi.music.removeFromFavorites(song.id.toString())
 
             // Cập nhật state và cache
             const updatedFavorites = favoriteSongs.filter(s => s.id !== song.id)
@@ -185,7 +234,18 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
             return false
         }
 
+        // Kiểm tra song_id hợp lệ
+        if (!song?.id) {
+            toast({
+                title: "Lỗi",
+                description: "ID bài hát không hợp lệ",
+                variant: "destructive",
+            })
+            return false
+        }
+
         try {
+            // Sử dụng API toggle đã có sẵn
             const response = await postmanApi.music.likeSong(song.id.toString())
             const result = response.status === "liked"
 
@@ -230,7 +290,8 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
         toggleFavorite,
         addToFavorites,
         removeFromFavorites,
-        refreshFavorites
+        refreshFavorites,
+        fetchUserLibrary
     }), [
         favoriteSongs,
         isLoading,
@@ -238,7 +299,8 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
         toggleFavorite,
         addToFavorites,
         removeFromFavorites,
-        refreshFavorites
+        refreshFavorites,
+        fetchUserLibrary
     ])
 
     return (

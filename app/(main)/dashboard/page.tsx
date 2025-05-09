@@ -22,6 +22,8 @@ interface Artist {
     bio?: string
     image?: string
     monthly_listeners?: number
+    songs_count?: number
+    play_count?: number
     type?: string
 }
 
@@ -137,8 +139,11 @@ export default function DashboardPage() {
                 }
 
                 try {
-                    const artistsResponse: any = await postmanApi.music.getArtists();
-                    artistsData = artistsResponse.data || artistsResponse;
+                    // Gọi API lấy danh sách nghệ sĩ phổ biến thay vì gọi qua postmanApi
+                    const response = await fetch('https://spotifybackend.shop/api/v1/music/artists/popular/');
+                    if (!response.ok) throw new Error('Failed to fetch popular artists');
+                    const popularArtists = await response.json();
+                    setArtists(popularArtists);
                 } catch (err) {
                     console.error("Error fetching artists:", err);
                 }
@@ -153,7 +158,6 @@ export default function DashboardPage() {
                 setTrendingSongs(trendingData)
                 setRecommendedSongs(recommendedData)
                 setPlaylists(playlistsData)
-                setArtists(artistsData)
                 setRecentPlays(personalData.recent_plays || [])
                 setTopGenres(personalData.top_genres || [])
             } catch (error) {
@@ -721,8 +725,11 @@ export default function DashboardPage() {
                                     </Button>
                                 </div>
                                 <h3 className="font-semibold truncate">{artist.name}</h3>
+                                <p className="text-sm text-zinc-400 mt-1 line-clamp-2">
+                                    {artist.bio ? artist.bio.substring(0, 100) + '...' : 'Nghệ sĩ'}
+                                </p>
                                 <p className="text-sm text-zinc-400 mt-1">
-                                    {artist.monthly_listeners ? `${artist.monthly_listeners.toLocaleString()} người nghe mỗi tháng` : 'Nghệ sĩ'}
+                                    {artist.play_count ? `${artist.play_count.toLocaleString()} lượt nghe` : (artist.songs_count ? `${artist.songs_count} bài hát` : 'Nghệ sĩ')}
                                 </p>
                             </Link>
                         ))}

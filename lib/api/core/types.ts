@@ -100,3 +100,29 @@ export interface ArtistData {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface MusicCollection {
+  getPlaylists(params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<PlaylistData>>;
+  getPlaylist(id: string): Promise<PlaylistData>;
+  createPlaylist(data: FormData): Promise<PlaylistData>;
+  updatePlaylist(
+    playlistId: string | number,
+    data: FormData
+  ): Promise<PlaylistData>;
+  deletePlaylist(id: string): Promise<void>;
+  addSongToPlaylist(playlistId: string, songId: string): Promise<any>;
+  removeSongFromPlaylist(playlistId: string, songId: string): Promise<any>;
+  followPlaylist(playlistId: string): Promise<any>;
+  unfollowPlaylist(playlistId: string): Promise<any>;
+  checkFollowingPlaylist(playlistId: string): Promise<{ following: boolean }>;
+  getPlaylistFollowers(playlistId: string): Promise<any>;
+  togglePlaylistPrivacy(playlistId: string): Promise<PlaylistData>;
+  sharePlaylist(
+    playlistId: string,
+    receiverId: string,
+    content: string
+  ): Promise<any>;
+}

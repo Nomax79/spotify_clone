@@ -5,11 +5,14 @@ import Image from "next/image"
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
-import { PlayIcon, ShuffleIcon, Clock, Heart, MoreHorizontal, UserPlus, ShareIcon, Pencil, Plus, PlusCircle } from "lucide-react"
+import { PlayIcon, ShuffleIcon, Clock, Heart, MoreHorizontal, UserPlus, ShareIcon, Pencil, Plus, PlusCircle, Globe, Lock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { usePlayer } from "@/components/player/PlayerContext"
 import postmanApi from "@/lib/api/postman"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import PlaylistFollowersModal from "@/components/music/PlaylistFollowersModal"
+import PlaylistPrivacyToggle from "@/components/music/PlaylistPrivacyToggle"
+import PlaylistSharingComponent from "@/components/music/PlaylistSharingComponent"
 
 interface Song {
     id: string
@@ -56,6 +59,8 @@ export default function PlaylistPage() {
     const [loading, setLoading] = useState(true)
     const [isFollowing, setIsFollowing] = useState(false)
     const [isOwner, setIsOwner] = useState(false)
+    const [privacyStatus, setPrivacyStatus] = useState<boolean>(true)
+    const [followersCount, setFollowersCount] = useState<number>(0)
 
     useEffect(() => {
         if (!user) {
@@ -84,6 +89,10 @@ export default function PlaylistPage() {
                         setIsOwner(String(playlistData.user.id) === String(user.id))
                     }
 
+                    // Lưu trạng thái public và số lượng người theo dõi 
+                    setPrivacyStatus(playlistData.is_public)
+                    setFollowersCount(playlistData.followers_count || 0)
+
                     // Định dạng lại dữ liệu bài hát nếu cần
                     const formattedSongs = (playlistData.songs || []).map((song: any) => ({
                         id: song.id,
@@ -110,7 +119,7 @@ export default function PlaylistPage() {
                         } else {
                             // Nếu không có thông tin theo dõi trong response, gọi API riêng
                             const followStatus = await postmanApi.music.checkFollowingPlaylist(playlistId)
-                            setIsFollowing(followStatus?.is_following || false)
+                            setIsFollowing(followStatus?.following || false)
                         }
                     } catch (error) {
                         console.error("Không thể kiểm tra trạng thái theo dõi:", error)
@@ -356,15 +365,11 @@ export default function PlaylistPage() {
     }
 
     const handleEditPlaylist = () => {
-        router.push(`/edit-playlist/${playlistId}`)
+        router.push(`/playlist/${playlistId}/edit`)
     }
 
     const handleShare = async () => {
-        // Đây chỉ là demo, thực tế cần có chức năng chia sẻ
-        toast({
-            title: "Chia sẻ",
-            description: "Tính năng chia sẻ đang được phát triển",
-        })
+        // Đã có component PlaylistSharingComponent xử lý việc chia sẻ
     }
 
     const handleAddToQueue = (song: Song) => {
@@ -446,6 +451,18 @@ export default function PlaylistPage() {
         }
     };
 
+    const handlePrivacyChange = (newStatus: boolean) => {
+        setPrivacyStatus(newStatus);
+
+        // Hiển thị thông báo
+        toast({
+            title: "Đã cập nhật",
+            description: newStatus
+                ? "Playlist của bạn đã chuyển sang chế độ công khai"
+                : "Playlist của bạn đã chuyển sang chế độ riêng tư",
+        });
+    }
+
     return (
         <div>
             {loading ? (
@@ -481,7 +498,24 @@ export default function PlaylistPage() {
                         </div>
 
                         <div className="flex flex-col justify-end">
-                            <div className="text-sm font-medium mb-1">Playlist</div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="text-sm font-medium">Playlist</div>
+                                {isOwner ? (
+                                    <PlaylistPrivacyToggle
+                                        playlistId={playlistId}
+                                        isPublic={privacyStatus}
+                                        onToggle={handlePrivacyChange}
+                                    />
+                                ) : (
+                                    <div className="text-sm text-zinc-400">
+                                        {privacyStatus ? (
+                                            <Globe className="h-3.5 w-3.5" />
+                                        ) : (
+                                            <Lock className="h-3.5 w-3.5" />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             <h1 className="text-5xl font-extrabold mb-6">{playlist?.name}</h1>
 
                             {playlist?.description && (
@@ -496,6 +530,11 @@ export default function PlaylistPage() {
                                 <span>{songs.length} bài hát</span>
                                 <span>•</span>
                                 <span>Tạo ngày {playlist?.created_at ? formatDate(playlist.created_at) : "Unknown"}</span>
+                                <span>•</span>
+                                <PlaylistFollowersModal
+                                    playlistId={playlistId}
+                                    followersCount={followersCount}
+                                />
                             </div>
                         </div>
                     </div>
@@ -519,36 +558,56 @@ export default function PlaylistPage() {
                             <ShuffleIcon className="h-5 w-5" />
                         </Button>
 
-                        {!isOwner && (
+                        {isOwner ? (
+                            <Button
+                                onClick={handleEditPlaylist}
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                            >
+                                <Pencil className="h-4 w-4" /> Sửa
+                            </Button>
+                        ) : (
                             <Button
                                 onClick={handleFollowPlaylist}
-                                variant={isFollowing ? "default" : "outline"}
+                                variant={isFollowing ? "outline" : "default"}
                                 size="sm"
-                                className={isFollowing ? "bg-green-500 hover:bg-green-600 text-black" : ""}
+                                className="gap-2"
                             >
-                                {isFollowing ? "Đang theo dõi" : "Theo dõi"}
+                                {isFollowing ? "Đã theo dõi" : "Theo dõi"}
                             </Button>
                         )}
 
+                        <PlaylistSharingComponent
+                            playlistId={playlistId}
+                            playlistName={playlist?.name || "Playlist"}
+                            playlistCover={playlist?.cover_image || undefined}
+                        />
+
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-10 w-10"
+                                >
                                     <MoreHorizontal className="h-5 w-5" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {isOwner && (
-                                    <DropdownMenuItem onClick={handleEditPlaylist}>
-                                        <Pencil className="h-4 w-4 mr-2" /> Chỉnh sửa playlist
-                                    </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem onClick={handleShare}>
-                                    <ShareIcon className="h-4 w-4 mr-2" /> Chia sẻ
-                                </DropdownMenuItem>
-                                {!isOwner && (
+                                {isOwner ? (
+                                    <>
+                                        <DropdownMenuItem onClick={handleEditPlaylist}>
+                                            <Pencil className="h-4 w-4 mr-2" /> Sửa playlist
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                    </>
+                                ) : (
                                     <DropdownMenuItem onClick={handleFollowPlaylist}>
                                         {isFollowing ? (
-                                            <>Hủy theo dõi</>
+                                            <>
+                                                <UserPlus className="h-4 w-4 mr-2" /> Hủy theo dõi
+                                            </>
                                         ) : (
                                             <>
                                                 <UserPlus className="h-4 w-4 mr-2" /> Theo dõi

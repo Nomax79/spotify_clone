@@ -600,22 +600,44 @@ export class MusicCollection extends ApiRequest {
     return this.post<any>(`/api/v1/music/songs/${songId}/unlike/`);
   }
 
+  // Thêm phương thức mới theo tài liệu API
+  addToFavorites(songId: string) {
+    return this.post<any>(`/api/v1/music/favorites/`, {
+      song_id: songId,
+    });
+  }
+
+  // Thêm phương thức mới theo tài liệu API
+  removeFromFavorites(songId: string) {
+    return this.delete<any>(`/api/v1/music/favorites/`, {
+      song_id: songId,
+    });
+  }
+
+  // Thêm phương thức lấy thư viện bài hát của người dùng
+  getLibrary() {
+    return this.get<any>(`/api/v1/music/library/`);
+  }
+
   removeSongFromPlaylist(playlistId: string, songId: string) {
-    return this.delete<any>(
-      `/api/v1/music/playlists/${playlistId}/songs/${songId}/`
+    return this.post<any>(
+      `/api/v1/music/playlists/${playlistId}/remove_song/`,
+      {
+        song_id: songId,
+      }
     );
   }
 
   addSongToPlaylist(playlistId: string, songId: string) {
-    return this.post<any>(`/api/v1/music/playlists/${playlistId}/songs/`, {
+    return this.post<any>(`/api/v1/music/playlists/${playlistId}/add_song/`, {
       song_id: songId,
     });
   }
 
   // Thêm phương thức kiểm tra theo dõi playlist
   checkFollowingPlaylist(playlistId: string) {
-    return this.get<{ is_following: boolean }>(
-      `/api/v1/music/playlists/${playlistId}/check-following/`
+    return this.get<{ following: boolean }>(
+      `/api/v1/music/playlists/${playlistId}/following/`
     );
   }
 
@@ -624,7 +646,51 @@ export class MusicCollection extends ApiRequest {
   }
 
   unfollowPlaylist(playlistId: string) {
-    return this.post<any>(`/api/v1/music/playlists/${playlistId}/unfollow/`);
+    return this.delete<any>(`/api/v1/music/playlists/${playlistId}/follow/`);
+  }
+
+  // Thêm các phương thức mới cho playlist
+  updatePlaylistCover(playlistId: string, formData: FormData) {
+    return this.request<any>(
+      "POST",
+      `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+      formData
+    );
+  }
+
+  updatePlaylistCoverFromSong(playlistId: string, songId: string) {
+    return this.post<any>(
+      `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+      {
+        song_id: songId,
+      }
+    );
+  }
+
+  togglePlaylistPrivacy(playlistId: string) {
+    return this.post<any>(
+      `/api/v1/music/playlists/${playlistId}/toggle_privacy/`,
+      {}
+    );
+  }
+
+  getPlaylistFollowers(playlistId: string) {
+    return this.get<any>(`/api/v1/music/playlists/${playlistId}/followers/`);
+  }
+
+  sharePlaylist(playlistId: string, receiverId: string, content: string) {
+    return this.post<any>(`/api/v1/music/share/playlist/${playlistId}/`, {
+      receiver_id: receiverId,
+      content,
+    });
+  }
+
+  createPlaylist(data: {
+    name: string;
+    description?: string;
+    is_public?: boolean;
+  }) {
+    return this.post<any>("/api/v1/music/playlists/", data);
   }
 }
 

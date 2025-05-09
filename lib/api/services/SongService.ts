@@ -108,6 +108,36 @@ export class SongService extends ApiRequest {
   }
 
   /**
+   * Thêm bài hát vào danh sách yêu thích
+   * @param songId ID bài hát
+   * @returns Kết quả thêm vào yêu thích
+   */
+  async addToFavorites(songId: string) {
+    return this.post(`/api/v1/music/favorites/`, {
+      song_id: songId,
+    });
+  }
+
+  /**
+   * Xóa bài hát khỏi danh sách yêu thích
+   * @param songId ID bài hát
+   * @returns Kết quả xóa khỏi yêu thích
+   */
+  async removeFromFavorites(songId: string) {
+    return this.delete(`/api/v1/music/favorites/`, {
+      song_id: songId,
+    });
+  }
+
+  /**
+   * Lấy thư viện bài hát của người dùng
+   * @returns Thư viện bài hát (playlists, favorites, recently played)
+   */
+  async getLibrary() {
+    return this.get(`/api/v1/music/library/`);
+  }
+
+  /**
    * Lấy danh sách nghệ sĩ
    * @param params Tham số phân trang và lọc
    * @returns Danh sách nghệ sĩ phân trang

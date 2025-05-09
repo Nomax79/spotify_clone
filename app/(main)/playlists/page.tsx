@@ -60,7 +60,12 @@ export default function PlaylistsPage() {
 
                 // Biến để lưu dữ liệu
                 let playlistsData = [];
-                let featuredData = { playlists: [], total: 0, page: 1, page_size: 20 };
+                let featuredData: { playlists: PlaylistApiResponse[]; total: number; page: number; page_size: number; } = {
+                    playlists: [],
+                    total: 0,
+                    page: 1,
+                    page_size: 20
+                };
 
                 try {
                     // Lấy tất cả playlist

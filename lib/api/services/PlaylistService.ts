@@ -134,7 +134,7 @@ export class PlaylistService extends ApiRequest {
    * @returns Kết quả thêm
    */
   async addSongToPlaylist(playlistId: string, songId: string) {
-    return this.post(`/api/v1/music/playlists/${playlistId}/songs/`, {
+    return this.post(`/api/v1/music/playlists/${playlistId}/add_song/`, {
       song_id: songId,
     });
   }
@@ -146,9 +146,9 @@ export class PlaylistService extends ApiRequest {
    * @returns Kết quả xóa
    */
   async removeSongFromPlaylist(playlistId: string, songId: string) {
-    return this.delete(
-      `/api/v1/music/playlists/${playlistId}/songs/${songId}/`
-    );
+    return this.post(`/api/v1/music/playlists/${playlistId}/remove_song/`, {
+      song_id: songId,
+    });
   }
 
   /**
@@ -178,5 +178,77 @@ export class PlaylistService extends ApiRequest {
    */
   async unfollowPlaylist(playlistId: string) {
     return this.delete(`/api/v1/music/playlists/${playlistId}/follow/`);
+  }
+
+  /**
+   * Cập nhật ảnh bìa playlist (dùng FormData)
+   * @param playlistId ID playlist
+   * @param formData FormData chứa ảnh bìa
+   * @returns Kết quả cập nhật
+   */
+  async updatePlaylistCover(playlistId: string, formData: FormData) {
+    return this.request<PlaylistData>(
+      "POST",
+      `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+      formData
+    );
+  }
+
+  /**
+   * Cập nhật ảnh bìa playlist từ bài hát
+   * @param playlistId ID playlist
+   * @param songId ID bài hát để lấy ảnh bìa
+   * @returns Kết quả cập nhật
+   */
+  async updatePlaylistCoverFromSong(playlistId: string, songId: string) {
+    return this.post<PlaylistData>(
+      `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+      {
+        song_id: songId,
+      }
+    );
+  }
+
+  /**
+   * Chuyển đổi chế độ riêng tư của playlist
+   * @param playlistId ID playlist
+   * @returns Kết quả chuyển đổi
+   */
+  async togglePlaylistPrivacy(playlistId: string) {
+    return this.post<PlaylistData>(
+      `/api/v1/music/playlists/${playlistId}/toggle_privacy/`,
+      {}
+    );
+  }
+
+  /**
+   * Lấy danh sách người theo dõi playlist
+   * @param playlistId ID playlist
+   * @returns Danh sách người theo dõi
+   */
+  async getPlaylistFollowers(playlistId: string) {
+    return this.get(`/api/v1/music/playlists/${playlistId}/followers/`);
+  }
+
+  /**
+   * Chia sẻ playlist với người dùng khác
+   * @param playlistId ID playlist
+   * @param receiverId ID người nhận
+   * @param content Nội dung chia sẻ
+   * @returns Kết quả chia sẻ
+   */
+  async sharePlaylist(playlistId: string, receiverId: string, content: string) {
+    return this.post(`/api/v1/music/share/playlist/${playlistId}/`, {
+      receiver_id: receiverId,
+      content,
+    });
+  }
+
+  updatePlaylist(playlistId: string | number, data: FormData) {
+    return this.api.patch(`/api/v1/music/playlists/${playlistId}/`, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   }
 }
