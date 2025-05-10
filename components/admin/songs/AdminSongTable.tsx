@@ -49,9 +49,9 @@ export default function AdminSongTable({ songs, loading, onEdit, onDelete }: Adm
 
     const filteredSongs = songs.filter((song) =>
         song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        song.artist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (song.album?.title && song.album.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (song.genre?.name && song.genre.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        song.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (song.album && song.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (song.genre && song.genre.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     return (
@@ -119,12 +119,12 @@ export default function AdminSongTable({ songs, loading, onEdit, onDelete }: Adm
                                             </div>
                                             <div>
                                                 <div className="font-medium">{song.title}</div>
-                                                <div className="text-xs text-zinc-400">{song.artist.name}</div>
+                                                <div className="text-xs text-zinc-400">{song.artist}</div>
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell>{song.album?.title || "-"}</TableCell>
-                                    <TableCell>{song.genre?.name || "-"}</TableCell>
+                                    <TableCell>{song.album || "-"}</TableCell>
+                                    <TableCell>{song.genre || "-"}</TableCell>
                                     <TableCell>{formatDuration(song.duration)}</TableCell>
                                     <TableCell>{song.play_count?.toLocaleString() || "0"}</TableCell>
                                     <TableCell className="text-right">

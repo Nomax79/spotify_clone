@@ -6,19 +6,9 @@ import { BaseAdminService } from "./BaseAdminService";
 export interface AdminSong {
   id: number;
   title: string;
-  artist: {
-    id: number;
-    name: string;
-  };
-  album?: {
-    id: number;
-    title: string;
-    artist: string;
-  };
-  genre?: {
-    id: number;
-    name: string;
-  };
+  artist: string;
+  album?: string;
+  genre?: string;
   duration?: number;
   audio_file: string;
   cover_image?: string;
@@ -78,6 +68,24 @@ export class AdminSongService extends BaseAdminService {
   private readonly BASE_URL = "/api/v1/music/admin/songs";
 
   /**
+   * Chuẩn bị FormData và loại bỏ trường uploaded_by nếu có
+   * để tránh xung đột với backend
+   */
+  private prepareFormData(formData: FormData): FormData {
+    // Tạo một FormData mới để đảm bảo không gửi trùng lặp
+    const cleanFormData = new FormData();
+
+    // Sao chép tất cả các trường từ formData gốc, ngoại trừ uploaded_by
+    for (const [key, value] of formData.entries()) {
+      if (key !== "uploaded_by") {
+        cleanFormData.append(key, value);
+      }
+    }
+
+    return cleanFormData;
+  }
+
+  /**
    * Lấy danh sách bài hát
    * @param params Tham số tìm kiếm, lọc và phân trang
    * @returns Danh sách bài hát phân trang
@@ -87,9 +95,9 @@ export class AdminSongService extends BaseAdminService {
     page_size?: number;
     search?: string;
     ordering?: string;
-    artist_id?: number;
-    genre_id?: number;
-    album_id?: number;
+    artist?: string;
+    genre?: string;
+    album?: string;
     is_approved?: boolean;
     uploaded_by?: number;
   }) {
@@ -114,7 +122,8 @@ export class AdminSongService extends BaseAdminService {
    * @returns Thông tin bài hát mới
    */
   async createSong(songData: FormData) {
-    return this.post<AdminSong>(this.BASE_URL + "/", songData);
+    const cleanFormData = this.prepareFormData(songData);
+    return this.post<AdminSong>(this.BASE_URL + "/", cleanFormData);
   }
 
   /**
@@ -124,7 +133,8 @@ export class AdminSongService extends BaseAdminService {
    * @returns Thông tin bài hát sau khi cập nhật
    */
   async updateSong(id: number, songData: FormData) {
-    return this.put<AdminSong>(`${this.BASE_URL}/${id}/`, songData);
+    const cleanFormData = this.prepareFormData(songData);
+    return this.patch<AdminSong>(`${this.BASE_URL}/${id}/`, cleanFormData);
   }
 
   /**
@@ -133,8 +143,9 @@ export class AdminSongService extends BaseAdminService {
    * @param songData Thông tin bài hát cần cập nhật
    * @returns Thông tin bài hát sau khi cập nhật
    */
-  async partialUpdateSong(id: number, songData: Partial<AdminSong> | FormData) {
-    return this.patch<AdminSong>(`${this.BASE_URL}/${id}/`, songData);
+  async partialUpdateSong(id: number, songData: FormData) {
+    const cleanFormData = this.prepareFormData(songData);
+    return this.patch<AdminSong>(`${this.BASE_URL}/${id}/`, cleanFormData);
   }
 
   /**
@@ -185,6 +196,7 @@ export class AdminSongService extends BaseAdminService {
    * @returns Kết quả upload
    */
   async uploadAudio(id: number, audioFile: File) {
+    // Đảm bảo không gửi trường uploaded_by trùng lặp
     return this.uploadFile<{
       status: string;
       message: string;
@@ -199,6 +211,7 @@ export class AdminSongService extends BaseAdminService {
    * @returns Kết quả upload
    */
   async uploadCover(id: number, coverImage: File) {
+    // Đảm bảo không gửi trường uploaded_by trùng lặp
     return this.uploadFile<{
       status: string;
       message: string;

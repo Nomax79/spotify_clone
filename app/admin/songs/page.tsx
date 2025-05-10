@@ -21,9 +21,9 @@ export default function AdminSongsPage() {
   const [formLoading, setFormLoading] = useState(false);
 
   // Danh sách nghệ sĩ, album, thể loại
-  const [artists, setArtists] = useState<{ id: number; name: string }[]>([]);
-  const [albums, setAlbums] = useState<{ id: number; title: string }[]>([]);
-  const [genres, setGenres] = useState<{ id: number; name: string }[]>([]);
+  const [artists, setArtists] = useState<string[]>([]);
+  const [albums, setAlbums] = useState<string[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
 
   const { success, error, ToastContainer } = useToast();
 
@@ -70,23 +70,32 @@ export default function AdminSongsPage() {
         genreService.getGenres()
       ]);
 
+      // Xử lý và lấy danh sách tên nghệ sĩ
+      let artistNames: string[] = [];
       if (Array.isArray(artistsResponse)) {
-        setArtists(artistsResponse);
+        artistNames = artistsResponse.map(artist => artist.name);
       } else if (artistsResponse && Array.isArray(artistsResponse.results)) {
-        setArtists(artistsResponse.results);
+        artistNames = artistsResponse.results.map(artist => artist.name);
       }
+      setArtists(artistNames);
 
+      // Xử lý và lấy danh sách tên album
+      let albumNames: string[] = [];
       if (Array.isArray(albumsResponse)) {
-        setAlbums(albumsResponse);
+        albumNames = albumsResponse.map(album => album.title);
       } else if (albumsResponse && Array.isArray(albumsResponse.results)) {
-        setAlbums(albumsResponse.results);
+        albumNames = albumsResponse.results.map(album => album.title);
       }
+      setAlbums(albumNames);
 
+      // Xử lý và lấy danh sách tên thể loại
+      let genreNames: string[] = [];
       if (Array.isArray(genresResponse)) {
-        setGenres(genresResponse);
+        genreNames = genresResponse.map(genre => genre.name);
       } else if (genresResponse && Array.isArray(genresResponse.results)) {
-        setGenres(genresResponse.results);
+        genreNames = genresResponse.results.map(genre => genre.name);
       }
+      setGenres(genreNames);
     } catch (err) {
       console.error("Lỗi khi tải metadata:", err);
       error("Không thể tải dữ liệu nghệ sĩ, album và thể loại");
@@ -96,13 +105,39 @@ export default function AdminSongsPage() {
   const handleAddSong = async (formData: FormData) => {
     try {
       setFormLoading(true);
+
+      // Đảm bảo không có trường uploaded_by trong formData
+      if (formData.has("uploaded_by")) {
+        formData.delete("uploaded_by");
+      }
+
       await adminSongService.createSong(formData);
       await fetchData();
       setIsAddSongOpen(false);
       success("Thêm bài hát thành công");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lỗi khi thêm bài hát:", err);
-      error("Không thể thêm bài hát");
+
+      // Xử lý lỗi từ API
+      if (err.response?.data?.error) {
+        const errorData = err.response.data.error;
+        if (errorData.message) {
+          error(errorData.message);
+        } else if (errorData.details) {
+          const details = errorData.details;
+          if (details.title) error(`Lỗi tên bài hát: ${details.title[0]}`);
+          if (details.artist) error(`Lỗi nghệ sĩ: ${details.artist[0]}`);
+          if (details.genre) error(`Lỗi thể loại: ${details.genre[0]}`);
+          if (details.audio_file) error(`Lỗi file nhạc: ${details.audio_file[0]}`);
+          if (details.cover_image) error(`Lỗi ảnh bìa: ${details.cover_image[0]}`);
+          if (details.uploaded_by) error(`Lỗi người tải lên: ${details.uploaded_by[0]}`);
+          if (details.non_field_errors) error(details.non_field_errors[0]);
+        }
+      } else {
+        error("Không thể thêm bài hát. Vui lòng kiểm tra dữ liệu đầu vào.");
+      }
+
+      throw err; // Ném lại lỗi để form xử lý hiển thị
     } finally {
       setFormLoading(false);
     }
@@ -113,14 +148,40 @@ export default function AdminSongsPage() {
 
     try {
       setFormLoading(true);
+
+      // Đảm bảo không có trường uploaded_by trong formData
+      if (formData.has("uploaded_by")) {
+        formData.delete("uploaded_by");
+      }
+
       await adminSongService.updateSong(selectedSong.id, formData);
       await fetchData();
       setIsEditSongOpen(false);
       setSelectedSong(null);
       success("Cập nhật bài hát thành công");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lỗi khi cập nhật bài hát:", err);
-      error("Không thể cập nhật bài hát");
+
+      // Xử lý lỗi từ API
+      if (err.response?.data?.error) {
+        const errorData = err.response.data.error;
+        if (errorData.message) {
+          error(errorData.message);
+        } else if (errorData.details) {
+          const details = errorData.details;
+          if (details.title) error(`Lỗi tên bài hát: ${details.title[0]}`);
+          if (details.artist) error(`Lỗi nghệ sĩ: ${details.artist[0]}`);
+          if (details.genre) error(`Lỗi thể loại: ${details.genre[0]}`);
+          if (details.audio_file) error(`Lỗi file nhạc: ${details.audio_file[0]}`);
+          if (details.cover_image) error(`Lỗi ảnh bìa: ${details.cover_image[0]}`);
+          if (details.uploaded_by) error(`Lỗi người tải lên: ${details.uploaded_by[0]}`);
+          if (details.non_field_errors) error(details.non_field_errors[0]);
+        }
+      } else {
+        error("Không thể cập nhật bài hát. Vui lòng kiểm tra dữ liệu đầu vào.");
+      }
+
+      throw err; // Ném lại lỗi để form xử lý hiển thị
     } finally {
       setFormLoading(false);
     }

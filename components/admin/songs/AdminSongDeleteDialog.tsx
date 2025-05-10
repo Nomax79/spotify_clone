@@ -35,7 +35,7 @@ export default function AdminSongDeleteDialog({
                     <DialogDescription className="text-zinc-400">
                         {song ? (
                             <>
-                                Bạn có chắc chắn muốn xóa bài hát <span className="font-medium text-white">{song.title}</span> của nghệ sĩ <span className="font-medium text-white">{song.artist.name}</span>?
+                                Bạn có chắc chắn muốn xóa bài hát <span className="font-medium text-white">{song.title}</span> của nghệ sĩ <span className="font-medium text-white">{song.artist}</span>?
                                 <br />
                                 Thao tác này không thể hoàn tác.
                             </>

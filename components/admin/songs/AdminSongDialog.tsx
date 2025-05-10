@@ -14,9 +14,9 @@ interface AdminSongDialogProps {
     isOpen: boolean;
     onClose: () => void;
     song?: AdminSong;
-    artists: { id: number; name: string }[];
-    genres: { id: number; name: string }[];
-    albums: { id: number; title: string }[];
+    artists: string[];
+    genres: string[];
+    albums: string[];
     isLoading: boolean;
     onSubmit: (formData: FormData) => Promise<void>;
     title: string;
