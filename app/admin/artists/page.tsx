@@ -83,14 +83,14 @@ function AdminArtistTable() {
         try {
             const response = await artistService.getArtists({
                 page,
-                page_size: 10,
+                page_size: 20,
                 search: searchQuery,
                 ordering
             })
 
             // Bây giờ response đã được chuẩn hóa trong service
             setArtists(response.results)
-            setTotalPages(Math.ceil(response.count / 10))
+            setTotalPages(Math.ceil(response.count / 20))
         } catch (error) {
             console.error("Lỗi khi lấy danh sách nghệ sĩ:", error)
             toast({
@@ -108,7 +108,7 @@ function AdminArtistTable() {
     // Load nghệ sĩ khi component mount hoặc các dependency thay đổi
     useEffect(() => {
         fetchArtists()
-    }, [page, ordering])
+    }, [page, ordering, searchQuery]) // Thêm searchQuery vào dependency array để refetch khi tìm kiếm
 
     // Tìm kiếm
     const handleSearch = () => {
@@ -118,6 +118,7 @@ function AdminArtistTable() {
 
     // Xử lý thay đổi thứ tự sắp xếp
     const handleOrderingChange = (value: string) => {
+        setPage(1) // Reset về trang đầu tiên khi thay đổi sắp xếp
         setOrdering(value)
     }
 
@@ -192,7 +193,7 @@ function AdminArtistTable() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-12">ID</TableHead>
+                            <TableHead className="w-12">STT</TableHead> {/* Đã thay ID thành STT */}
                             <TableHead className="w-14">Ảnh</TableHead>
                             <TableHead>Tên nghệ sĩ</TableHead>
                             <TableHead className="hidden md:table-cell">Bài hát</TableHead>
@@ -217,64 +218,61 @@ function AdminArtistTable() {
                                     <TableCell className="text-right"><Skeleton className="h-10 w-20 ml-auto" /></TableCell>
                                 </TableRow>
                             ))
-                        ) : artists.length > 0 ? (
-                            // Hiển thị danh sách nghệ sĩ
-                            artists.map((artist) => (
-                                <TableRow key={artist.id}>
-                                    <TableCell>{artist.id}</TableCell>
-                                    <TableCell>
-                                        {artist.image ? (
-                                            <div className="relative h-12 w-12 rounded-md overflow-hidden">
-                                                <Image
-                                                    src={artist.image}
-                                                    alt={artist.name}
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="h-12 w-12 bg-zinc-800 rounded-md flex items-center justify-center text-zinc-400">
-                                                <span className="text-lg font-semibold">{artist.name.charAt(0)}</span>
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="font-medium">{artist.name}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{artist.songs_count}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{artist.albums_count}</TableCell>
-                                    <TableCell className="hidden md:table-cell">
-                                        {new Date(artist.created_at).toLocaleDateString("vi-VN")}
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">
-                                        <span
-                                            className={`px-2 py-1 rounded-full text-xs ${artist.is_featured
-                                                ? "bg-green-500/20 text-green-500"
-                                                : "bg-zinc-500/20 text-zinc-400"
-                                                }`}
-                                        >
-                                            {artist.is_featured ? "Nổi bật" : "Bình thường"}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => router.push(`/admin/artists/${artist.id}`)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="destructive"
-                                                size="icon"
-                                                onClick={() => handleDeleteArtist(artist)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
+                        ) :artists.length > 0 ? (
+                                // Hiển thị danh sách nghệ sĩ cho trang hiện tại
+                                artists
+                                    .slice((page - 1) * 20, page * 20)
+                                    .map((artist, index) => (
+                                        <TableRow key={artist.id}>
+                                            <TableCell>{(page - 1) * 20 + index + 1}</TableCell> {/* Tính toán STT */}
+                                            <TableCell>
+                                                {artist.image ? (
+                                                    <div className="relative h-12 w-12 rounded-md overflow-hidden">
+                                                        <Image src={artist.image} alt={artist.name} fill className="object-cover" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-12 w-12 bg-zinc-800 rounded-md flex items-center justify-center text-zinc-400">
+                                                        <span className="text-lg font-semibold">{artist.name.charAt(0)}</span>
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="font-medium">{artist.name}</TableCell>
+                                            <TableCell className="hidden md:table-cell">{artist.songs_count}</TableCell>
+                                            <TableCell className="hidden md:table-cell">{artist.albums_count}</TableCell>
+                                            <TableCell className="hidden md:table-cell">
+                                                {new Date(artist.created_at).toLocaleDateString("vi-VN")}
+                                            </TableCell>
+                                            <TableCell className="hidden md:table-cell">
+                                                <span
+                                                    className={`px-2 py-1 rounded-full text-xs ${artist.is_featured
+                                                        ? "bg-green-500/20 text-green-500"
+                                                        : "bg-zinc-500/20 text-zinc-400"
+                                                        }`}
+                                                >
+                                                    {artist.is_featured ? "Nổi bật" : "Bình thường"}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => router.push(`/admin/artists/${artist.id}`)}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        size="icon"
+                                                        onClick={() => handleDeleteArtist(artist)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                            ) : (
                             // Không có nghệ sĩ
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center h-32 text-muted-foreground">

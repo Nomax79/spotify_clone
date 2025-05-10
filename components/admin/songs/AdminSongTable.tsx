@@ -1,24 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Thêm useEffect
 import { AdminSong } from "@/lib/api/services/AdminSongService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Trash2, Search, Play, Pause } from "lucide-react";
 import Image from "next/image";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"; // Import component phân trang
 
 interface AdminSongTableProps {
     songs: AdminSong[];
     loading: boolean;
     onEdit: (song: AdminSong) => void;
     onDelete: (song: AdminSong) => void;
+    pageSize?: number; // Kích thước trang tùy chọn, mặc định là 20
 }
 
-export default function AdminSongTable({ songs, loading, onEdit, onDelete }: AdminSongTableProps) {
+export default function AdminSongTable({ songs, loading, onEdit, onDelete, pageSize = 20 }: AdminSongTableProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [playingSong, setPlayingSong] = useState<number | null>(null);
     const audioRef = typeof Audio !== 'undefined' ? new Audio() : null;
+    const [page, setPage] = useState(1);
+    const totalPages = Math.ceil(songs.length / pageSize);
+    const [displayedSongs, setDisplayedSongs] = useState<AdminSong[]>([]);
+
+    useEffect(() => {
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        setDisplayedSongs(songs.slice(startIndex, endIndex));
+    }, [songs, page, pageSize]);
 
     const togglePlaySong = (songId: number) => {
         if (playingSong === songId) {
@@ -47,7 +59,7 @@ export default function AdminSongTable({ songs, loading, onEdit, onDelete }: Adm
         return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
     };
 
-    const filteredSongs = songs.filter((song) =>
+    const filteredSongs = displayedSongs.filter((song) => // Lọc trên displayedSongs
         song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         song.artist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (song.album?.title && song.album.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -72,7 +84,7 @@ export default function AdminSongTable({ songs, loading, onEdit, onDelete }: Adm
                 <Table>
                     <TableHeader>
                         <TableRow className="hover:bg-zinc-700/50">
-                            <TableHead className="text-zinc-400 w-12"></TableHead>
+                            <TableHead className="text-zinc-400 w-12">STT</TableHead>
                             <TableHead className="text-zinc-400">Bài hát</TableHead>
                             <TableHead className="text-zinc-400">Album</TableHead>
                             <TableHead className="text-zinc-400">Thể loại</TableHead>
@@ -95,18 +107,9 @@ export default function AdminSongTable({ songs, loading, onEdit, onDelete }: Adm
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredSongs.map((song) => (
+                            filteredSongs.map((song, index) => (
                                 <TableRow key={song.id} className="hover:bg-zinc-700/50">
-                                    <TableCell>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="rounded-full"
-                                            onClick={() => togglePlaySong(song.id)}
-                                        >
-                                            {playingSong === song.id ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
-                                        </Button>
-                                    </TableCell>
+                                    <TableCell>{(page - 1) * pageSize + index + 1}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <div className="relative w-10 h-10 overflow-hidden rounded">
@@ -152,6 +155,24 @@ export default function AdminSongTable({ songs, loading, onEdit, onDelete }: Adm
                     </TableBody>
                 </Table>
             </div>
+
+            {totalPages > 1 && (
+                <Pagination className="mt-4">
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious onClick={() => setPage(prev => Math.max(prev - 1, 1))} className={page === 1 ? "opacity-50 cursor-not-allowed" : ""} />
+                        </PaginationItem>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+                            <PaginationItem key={num} className={num === page ? "active-class" : ""}>
+                                <PaginationLink onClick={() => setPage(num)}>{num}</PaginationLink>
+                            </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                            <PaginationNext onClick={() => setPage(prev => Math.min(prev + 1, totalPages))} className={page === totalPages ? "opacity-50 cursor-not-allowed" : ""} />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            )}
         </div>
     );
-} 
+}

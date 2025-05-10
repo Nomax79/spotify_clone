@@ -4,25 +4,16 @@ import { ReactNode, useState, useCallback, useEffect } from "react"
 import { PlayerContext } from "./PlayerContext"
 import { LoginPromptAlert } from "@/components/ui/LoginPromptAlert"
 import { usePlayer } from "./PlayerContext"
-import { SongType, PlayerContextType } from "./PlayerContext"
+import { SongType } from "@/components/music/SongCard"
 import { toast } from "@/components/ui/use-toast"
-import { api } from "@/lib/api"
-
-// Cache URL để cải thiện hiệu suất
-const urlCache = new Map<string, string>();
 
 // Hàm xử lý URL cho file âm thanh và hình ảnh
 const getDirectMediaUrl = (url: string | undefined | null) => {
     if (!url) return "/placeholder.jpg";
 
-    // Kiểm tra cache trước
-    if (urlCache.has(url)) {
-        return urlCache.get(url)!;
-    }
-
     // Nếu là URL đầy đủ, trả về nguyên bản
     if (url.startsWith('http')) {
-        urlCache.set(url, url);
+        // console.log("URL đầy đủ:", url);
         return url;
     }
 
@@ -36,17 +27,16 @@ const getDirectMediaUrl = (url: string | undefined | null) => {
 
         // Sử dụng domain backend của server Nginx
         const fullUrl = `https://spotifybackend.shop${encodedPath.startsWith('/') ? '' : '/'}${encodedPath}`;
+        // console.log("URL sau khi xử lý:", fullUrl);
 
-        // Lưu vào cache
-        urlCache.set(url, fullUrl);
+        // Ghi chú: URL này có thể truy cập trực tiếp không cần token
+        // Token chỉ được sử dụng để ghi nhận lượt phát trong postmanApi.music.playSong()
 
         return fullUrl;
     } catch (error) {
         console.error("Lỗi khi xử lý URL:", error);
         // Nếu có lỗi, vẫn trả về URL gốc
-        const fallbackUrl = `https://spotifybackend.shop${url.startsWith('/') ? '' : '/'}${url}`;
-        urlCache.set(url, fallbackUrl);
-        return fallbackUrl;
+        return `https://spotifybackend.shop${url.startsWith('/') ? '' : '/'}${url}`;
     }
 }
 
@@ -109,11 +99,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const play = useCallback((song: SongType, songs?: SongType[]) => {
-        // Kiểm tra nếu đã đang phát bài hát này, không làm gì cả
-        if (currentSong?.id === song.id && isPlaying) {
-            return;
-        }
-
         // Cập nhật URL trực tiếp cho file âm thanh
         const processedSong = {
             ...song,
@@ -147,7 +132,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                 setCurrentIndex(0);
             } else {
                 setPlaylist(processedSongs);
-                // Tìm index của bài hát trong danh sách
+            // Tìm index của bài hát trong danh sách
                 const songIndex = processedSongs.findIndex(s => s.id === song.id);
                 setCurrentIndex(songIndex !== -1 ? songIndex : 0);
             }
@@ -158,21 +143,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             setCurrentIndex(0);
         }
 
-        // Đánh dấu là đang phát và ghi nhận lượt phát
         setIsPlaying(true);
-
-        // Ghi nhận lượt phát ngay lập tức
-        if (song.id) {
-            try {
-                // Không đợi kết quả trả về để tránh làm chậm việc phát nhạc
-                api.songs.playSong(String(song.id))
-                    .then(() => console.log("Ghi nhận lượt phát thành công"))
-                    .catch(err => console.error("Lỗi ghi nhận lượt phát:", err));
-            } catch (error) {
-                console.error("Lỗi khi ghi nhận lượt phát:", error);
-            }
-        }
-    }, [currentSong, isPlaying, isShuffle, shuffleArray]);
+    }, [isShuffle, shuffleArray]);
 
     const pause = useCallback(() => {
         // Chỉ thay đổi trạng thái isPlaying, không thay đổi bất kỳ thông tin nào khác
@@ -357,20 +329,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsLoginPromptOpen(false);
     }, []);
 
-    /**
-     * Lấy URL để phát trực tuyến bài hát
-     * @param songId ID của bài hát
-     * @returns URL để phát trực tuyến
-     */
-    const getStreamUrl = (songId: number | string): string => {
-        // Kiểm tra nếu API URL bị thiếu
-        if (!process.env.NEXT_PUBLIC_API_URL) {
-            return '';
-        }
-
-        return `${process.env.NEXT_PUBLIC_API_URL}/api/v1/music/songs/${songId}/stream/`;
-    };
-
     const providerValue = {
         currentSong,
         playlist,
@@ -393,8 +351,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         likeSong,
         closeLoginPrompt,
         checkAuthBeforePlaying,
-        getDirectMediaUrl,
-        getStreamUrl
+        getDirectMediaUrl
     };
 
     return (

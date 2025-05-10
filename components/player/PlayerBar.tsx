@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { Play, Pause, SkipBack, SkipForward, Volume, VolumeX, Repeat, Shuffle, Heart, ListMusic, Maximize2, XCircle, Trash2, Download } from "lucide-react"
+import { Play, Pause, SkipBack, SkipForward, Volume, VolumeX, Repeat, Shuffle, Heart, ListMusic, Maximize2, XCircle, Trash2 } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -9,8 +9,6 @@ import { usePlayer } from "./PlayerContext"
 import { toast } from "@/components/ui/use-toast"
 import postmanApi from "@/lib/api/postman"
 import { SongType } from "@/components/music/SongCard"
-import { api } from "@/lib/api"
-import { useFavorite } from "@/context/favorite-context"
 
 export function PlayerBar() {
     const {
@@ -24,20 +22,19 @@ export function PlayerBar() {
         toggleShuffle,
         repeatMode,
         toggleRepeat,
+        likeSong,
         addToQueue,
         removeFromQueue,
         clearQueue,
         play
     } = usePlayer()
 
-    const { isFavorite, toggleFavorite } = useFavorite()
-
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
     const [volume, setVolume] = useState(0.7)
     const [isMuted, setIsMuted] = useState(false)
     const [showQueue, setShowQueue] = useState(false)
-    const [downloading, setDownloading] = useState(false)
+    const [isLiked, setIsLiked] = useState(false)
 
     const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -239,18 +236,8 @@ export function PlayerBar() {
     }
 
     const handlePlaySong = (song: SongType, index: number) => {
-        // Nếu bài hát đã đang phát, chuyển sang trạng thái tạm dừng
-        if (currentSong?.id === song.id && isPlaying) {
-            togglePlay();
-            return;
-        }
-
-        // Luôn ghi nhận lượt phát ngay khi bắt đầu phát
-        if (song.id) {
-            postmanApi.music.playSong(String(song.id))
-                .then(() => console.log("Ghi nhận lượt phát thành công"))
-                .catch(err => console.error("Lỗi ghi nhận lượt phát:", err));
-        }
+        // Nếu bài hát đã đang phát, không làm gì
+        if (currentSong?.id === song.id) return;
 
         // Cắt danh sách từ vị trí index để phát
         const remainingPlaylist = playlist.slice(index);
@@ -260,57 +247,17 @@ export function PlayerBar() {
     const handleLike = async () => {
         if (!currentSong) return;
 
-        // Sử dụng hook toggleFavorite từ FavoriteContext
-        await toggleFavorite(currentSong);
-    }
+        const success = await likeSong(currentSong.id);
+        if (success) {
+            setIsLiked(!isLiked);
 
-    const handleDownload = async () => {
-        if (!currentSong) return;
-
-        try {
-            setDownloading(true);
-
-            // Gọi API để tải xuống bài hát với hỗ trợ Content-Disposition
-            const response = await api.songs.downloadSong(currentSong.id);
-
-            if (!response || !(response instanceof Blob)) {
-                throw new Error("Không nhận được dữ liệu bài hát từ server");
-            }
-
-            // Xác định tên file
-            const fileName = `${currentSong.title} - ${typeof currentSong.artist === 'string'
-                ? currentSong.artist
-                : currentSong.artist?.name}.mp3`;
-
-            // Tạo URL từ Blob
-            const url = window.URL.createObjectURL(response);
-
-            // Tạo thẻ a để tải xuống
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-
-            // Dọn dẹp
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(link);
-
+            // Hiển thị thông báo
             toast({
-                title: "Tải xuống thành công",
-                description: `Bài hát "${currentSong.title}" đã được tải xuống thiết bị của bạn.`,
+                title: isLiked ? "Đã xóa khỏi yêu thích" : "Đã thêm vào yêu thích",
+                description: `Bài hát "${currentSong.title}" đã được ${isLiked ? 'xóa khỏi' : 'thêm vào'} danh sách yêu thích.`,
             });
-        } catch (error) {
-            console.error("Lỗi khi tải bài hát:", error);
-            toast({
-                title: "Lỗi tải xuống",
-                description: "Không thể tải bài hát. Vui lòng thử lại sau.",
-                variant: "destructive",
-            });
-        } finally {
-            setDownloading(false);
         }
-    };
+    }
 
     const formatTime = (time: number) => {
         if (isNaN(time)) return "0:00"
@@ -321,13 +268,7 @@ export function PlayerBar() {
 
     // Hiển thị component rỗng nếu không có bài hát
     if (!currentSong) {
-        return (
-            <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 p-3 z-50">
-                <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
-                    <div className="text-sm text-zinc-400">Chưa có bài hát nào được chọn</div>
-                </div>
-            </div>
-        )
+        return null;
     }
 
     return (
@@ -354,18 +295,9 @@ export function PlayerBar() {
                         onClick={handleLike}
                         variant="ghost"
                         size="icon"
-                        className={`text-zinc-400 hover:text-white ${currentSong && isFavorite(currentSong.id) ? 'text-green-500' : ''}`}
+                        className={`text-zinc-400 hover:text-white ${isLiked ? 'text-green-500' : ''}`}
                     >
-                        <Heart size={20} className={currentSong && isFavorite(currentSong.id) ? 'fill-green-500' : ''} />
-                    </Button>
-                    <Button
-                        onClick={handleDownload}
-                        variant="ghost"
-                        size="icon"
-                        className={`text-zinc-400 hover:text-white ${downloading ? 'text-blue-500' : ''}`}
-                        disabled={downloading}
-                    >
-                        <Download size={20} className={downloading ? 'animate-pulse' : ''} />
+                        <Heart size={20} className={isLiked ? 'fill-green-500' : ''} />
                     </Button>
                 </div>
 

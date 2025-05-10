@@ -81,13 +81,11 @@ export function AdminArtistTable() {
         setLoading(true)
         try {
             const response = await artistService.getArtists({
-                page,
-                page_size: 10,
                 search: searchQuery,
                 ordering
             })
-            setArtists(response.results)
-            setTotalPages(Math.ceil(response.count / 10))
+            setArtists(response.results) // Lưu trữ tất cả nghệ sĩ
+            setTotalPages(Math.ceil(response.results.length / 20)) // Tính tổng số trang dựa trên tổng số nghệ sĩ
         } catch (error) {
             console.error("Lỗi khi lấy danh sách nghệ sĩ:", error)
             toast({
@@ -95,6 +93,8 @@ export function AdminArtistTable() {
                 title: "Đã xảy ra lỗi",
                 description: "Không thể tải danh sách nghệ sĩ. Vui lòng thử lại sau."
             })
+            setArtists([])
+            setTotalPages(1)
         } finally {
             setLoading(false)
         }
@@ -283,35 +283,35 @@ export function AdminArtistTable() {
 
             {/* Phân trang */}
             {!loading && totalPages > 1 && (
-                <Pagination className="mt-4">
-                    <PaginationContent>
-                        <PaginationItem>
-                            <PaginationPrevious
-                                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
-                            />
-                        </PaginationItem>
+            <Pagination className="mt-4">
+                <PaginationContent>
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                            className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                    </PaginationItem>
 
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
-                            <PaginationItem key={pageNumber}>
-                                <PaginationLink
-                                    onClick={() => setPage(pageNumber)}
-                                    isActive={page === pageNumber}
-                                >
-                                    {pageNumber}
-                                </PaginationLink>
-                            </PaginationItem>
-                        ))}
-
-                        <PaginationItem>
-                            <PaginationNext
-                                onClick={() => setPage((prev) => (prev < totalPages ? prev + 1 : prev))}
-                                className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
-                            />
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+                        <PaginationItem key={pageNumber}>
+                            <PaginationLink
+                                onClick={() => setPage(pageNumber)}
+                                isActive={page === pageNumber}
+                            >
+                                {pageNumber}
+                            </PaginationLink>
                         </PaginationItem>
-                    </PaginationContent>
-                </Pagination>
-            )}
+                    ))}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() => setPage((prev) => (prev < totalPages ? prev + 1 : prev))}
+                            className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                    </PaginationItem>
+                </PaginationContent>
+            </Pagination>
+        )}
 
             {/* Dialog xác nhận xóa */}
             <ConfirmDialog
