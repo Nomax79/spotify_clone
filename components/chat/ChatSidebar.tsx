@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Search } from "lucide-react"
-import { ChatRoom } from "@/types"
+import { Search, UserPlus, Loader2 } from "lucide-react"
+import { ChatRoom, User } from "@/types"
+import { useChat } from "@/context/chat-context"
 
 interface ChatSidebarProps {
     chatRooms: ChatRoom[]
@@ -12,12 +13,44 @@ interface ChatSidebarProps {
 }
 
 const ChatSidebar = ({ chatRooms, onSelectChat, activeChat }: ChatSidebarProps) => {
-    const [searchTerm, setSearchTerm] = useState("")
+    const { searchUsers, searchResults, searchTerm, isSearching, startNewConversation } = useChat()
+    const [localSearchTerm, setLocalSearchTerm] = useState("")
+    const [isCreatingChat, setIsCreatingChat] = useState(false)
+    const [showSearchResults, setShowSearchResults] = useState(false)
+
+    // Xử lý tìm kiếm với debounce
+    useEffect(() => {
+        const timerId = setTimeout(() => {
+            if (localSearchTerm.length >= 3) {
+                searchUsers(localSearchTerm)
+                setShowSearchResults(true)
+            } else {
+                setShowSearchResults(false)
+            }
+        }, 500)
+
+        return () => clearTimeout(timerId)
+    }, [localSearchTerm, searchUsers])
 
     // Lọc chat rooms theo từ khóa tìm kiếm
     const filteredRooms = chatRooms.filter(room =>
-        room.partner.username.toLowerCase().includes(searchTerm.toLowerCase())
+        room.partner.username.toLowerCase().includes(localSearchTerm.toLowerCase())
     )
+
+    // Xử lý bắt đầu cuộc trò chuyện với người dùng từ kết quả tìm kiếm
+    const handleStartChat = async (user: User) => {
+        setIsCreatingChat(true)
+        try {
+            const newChat = await startNewConversation(user.id)
+            onSelectChat(newChat)
+            setLocalSearchTerm("")
+            setShowSearchResults(false)
+        } catch (error) {
+            console.error("Lỗi khi bắt đầu cuộc trò chuyện:", error)
+        } finally {
+            setIsCreatingChat(false)
+        }
+    }
 
     return (
         <div className="h-full flex flex-col">
@@ -29,12 +62,91 @@ const ChatSidebar = ({ chatRooms, onSelectChat, activeChat }: ChatSidebarProps) 
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <input
                         type="text"
-                        placeholder="Tìm kiếm cuộc trò chuyện..."
+                        placeholder="Tìm kiếm người dùng..."
                         className="w-full pl-10 pr-4 py-2 rounded-full bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        value={localSearchTerm}
+                        onChange={(e) => setLocalSearchTerm(e.target.value)}
+                        onFocus={() => {
+                            if (localSearchTerm.length >= 3) {
+                                setShowSearchResults(true)
+                            }
+                        }}
+                        onBlur={() => {
+                            // Để tránh đóng ngay trước khi người dùng kịp nhấp vào kết quả
+                            setTimeout(() => setShowSearchResults(false), 200)
+                        }}
                     />
+                    {isSearching && (
+                        <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+                    )}
                 </div>
+
+                {/* Kết quả tìm kiếm người dùng */}
+                {showSearchResults && localSearchTerm.length >= 3 && (
+                    <div className="absolute z-10 mt-1 w-[calc(100%-2rem)] bg-background rounded-md shadow-lg border border-muted-foreground/10 overflow-hidden">
+                        {isSearching ? (
+                            <div className="p-4 text-center">
+                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                                <p className="mt-2 text-sm text-muted-foreground">Đang tìm kiếm...</p>
+                            </div>
+                        ) : searchResults.length > 0 ? (
+                            <div className="max-h-60 overflow-y-auto">
+                                {searchResults.map((user) => (
+                                    <div
+                                        key={user.id}
+                                        className="p-3 hover:bg-muted/50 cursor-pointer flex items-center gap-3"
+                                        onClick={() => handleStartChat(user)}
+                                    >
+                                        <div className="relative h-10 w-10 rounded-full overflow-hidden">
+                                            {user.avatar ? (
+                                                <Image
+                                                    src={user.avatar}
+                                                    alt={user.username}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full bg-primary/20 flex items-center justify-center rounded-full">
+                                                    <span className="text-sm font-semibold">
+                                                        {user.username.charAt(0).toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">{user.username}</p>
+                                            <p className="text-xs text-muted-foreground truncate">
+                                                {user.email}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            className="p-2 rounded-full hover:bg-primary/10 text-primary"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleStartChat(user)
+                                            }}
+                                            disabled={isCreatingChat}
+                                        >
+                                            {isCreatingChat ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <UserPlus className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-4 text-center">
+                                <p className="text-sm text-muted-foreground">
+                                    Không tìm thấy người dùng nào khớp với "{localSearchTerm}"
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Danh sách chat */}
@@ -86,7 +198,11 @@ const ChatSidebar = ({ chatRooms, onSelectChat, activeChat }: ChatSidebarProps) 
                                                         '🎵 Đã chia sẻ một bài hát' :
                                                         room.lastMessage.message_type === 'PLAYLIST' ?
                                                             '🎧 Đã chia sẻ một playlist' :
-                                                            'Tin nhắn media'
+                                                            room.lastMessage.message_type === 'IMAGE' ?
+                                                                '📷 Đã gửi một hình ảnh' :
+                                                                room.lastMessage.message_type === 'VOICE_NOTE' ?
+                                                                    '🎤 Đã gửi tin nhắn thoại' :
+                                                                    'Tin nhắn media'
                                             ) : 'Bắt đầu trò chuyện'}
                                         </p>
 
@@ -103,7 +219,7 @@ const ChatSidebar = ({ chatRooms, onSelectChat, activeChat }: ChatSidebarProps) 
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full p-4 text-center">
                         <p className="text-muted-foreground">
-                            {searchTerm ?
+                            {localSearchTerm ?
                                 'Không tìm thấy cuộc trò chuyện nào' :
                                 'Chưa có cuộc trò chuyện nào'}
                         </p>

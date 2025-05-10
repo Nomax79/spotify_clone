@@ -4,17 +4,26 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback,
 import { User, Message, ChatRoom, WebSocketMessage } from "@/types"
 import { api } from "@/lib/api"
 import { useAuth } from "./auth-context"
+import { toast } from "@/components/ui/use-toast"
 
 type ChatContextType = {
     activeChat: ChatRoom | null
     chatRooms: ChatRoom[]
     messages: Message[]
     isLoading: boolean
+    searchResults: User[]
+    searchTerm: string
+    isSearching: boolean
     sendMessage: (receiverId: string, content: string) => Promise<Message>
     shareSong: (songId: string, receiverId: string, content: string) => Promise<Message>
     sharePlaylist: (playlistId: string, receiverId: string, content: string) => Promise<Message>
+    searchUsers: (term: string) => Promise<void>
+    startNewConversation: (userId: string) => Promise<ChatRoom>
     setActiveChat: (chat: ChatRoom | null) => void
+    setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
     isConnected: boolean
+    markMessagesAsRead: (conversationId: string) => Promise<void>
+    deleteMessage: (messageId: number) => Promise<void>
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
@@ -26,88 +35,155 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const [messages, setMessages] = useState<Message[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [isConnected, setIsConnected] = useState(false)
+    const [searchResults, setSearchResults] = useState<User[]>([])
+    const [searchTerm, setSearchTerm] = useState("")
+    const [isSearching, setIsSearching] = useState(false)
     const socketRef = useRef<WebSocket | null>(null)
+    const socketReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-    // Hàm để cập nhật danh sách phòng chat từ tin nhắn
-    const updateChatRooms = useCallback((allMessages: Message[]) => {
+    // Tìm kiếm người dùng
+    const searchUsers = useCallback(async (term: string) => {
+        if (term.length < 3) {
+            setSearchResults([])
+            setSearchTerm("")
+            return
+        }
+
+        setSearchTerm(term)
+        setIsSearching(true)
+
+        try {
+            const users = await api.chat.searchUsers(term)
+            setSearchResults(users)
+        } catch (error) {
+            console.error("Lỗi khi tìm kiếm người dùng:", error)
+            toast({
+                title: "Lỗi tìm kiếm",
+                description: "Không thể tìm kiếm người dùng. Vui lòng thử lại sau.",
+                variant: "destructive"
+            })
+        } finally {
+            setIsSearching(false)
+        }
+    }, [])
+
+    // Bắt đầu cuộc trò chuyện mới
+    const startNewConversation = useCallback(async (userId: string) => {
+        try {
+            const newChat = await api.chat.startConversation(userId)
+
+            // Cập nhật danh sách chat rooms sử dụng đúng conversation.id
+            setChatRooms(prev => {
+                // Kiểm tra xem chat room đã tồn tại chưa
+                const exists = prev.some(room => room.id === newChat.id)
+                if (exists) {
+                    return prev
+                }
+                return [newChat, ...prev]
+            })
+
+            setActiveChat(newChat)
+            return newChat
+        } catch (error) {
+            console.error("Lỗi khi bắt đầu cuộc trò chuyện:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể bắt đầu cuộc trò chuyện. Vui lòng thử lại sau.",
+                variant: "destructive"
+            })
+            throw error
+        }
+    }, [])
+
+    // Đánh dấu tin nhắn là đã đọc
+    const markMessagesAsRead = useCallback(async (conversationId: string) => {
         if (!user) return
 
-        const roomsMap = new Map<string, ChatRoom>()
+        try {
+            // Gọi API đánh dấu tin nhắn đã đọc
+            await api.chat.markMessagesAsRead(conversationId)
 
-        // Lọc tin nhắn và tạo các phòng chat
-        allMessages.forEach(message => {
-            const isUserSender = message.sender.id === user.id
-            const partner = isUserSender ? message.receiver : message.sender
-            const roomId = `room_${user.id}_${partner.id}`
-
-            if (!roomsMap.has(roomId)) {
-                roomsMap.set(roomId, {
-                    id: roomId,
-                    partner,
-                    lastMessage: message,
-                    unreadCount: (!isUserSender && !message.is_read) ? 1 : 0
+            // Cập nhật trạng thái read ở local first
+            setMessages(prev =>
+                prev.map(msg => {
+                    if (msg.receiver.id === user.id && !msg.is_read) {
+                        return { ...msg, is_read: true }
+                    }
+                    return msg
                 })
-            } else {
-                const existingRoom = roomsMap.get(roomId)!
+            )
 
-                // Cập nhật tin nhắn mới nhất nếu cần
-                const existingTimestamp = new Date(existingRoom.lastMessage?.timestamp || 0).getTime()
-                const newTimestamp = new Date(message.timestamp).getTime()
-
-                if (newTimestamp > existingTimestamp) {
-                    existingRoom.lastMessage = message
-                }
-
-                // Cập nhật số tin nhắn chưa đọc
-                if (!isUserSender && !message.is_read) {
-                    existingRoom.unreadCount += 1
-                }
-
-                roomsMap.set(roomId, existingRoom)
-            }
-        })
-
-        // Chuyển map thành mảng và sắp xếp theo thời gian tin nhắn mới nhất
-        const rooms = Array.from(roomsMap.values()).sort((a, b) => {
-            const timeA = new Date(a.lastMessage?.timestamp || 0).getTime()
-            const timeB = new Date(b.lastMessage?.timestamp || 0).getTime()
-            return timeB - timeA
-        })
-
-        setChatRooms(rooms)
+            // Cập nhật unread count ở chat room
+            setChatRooms(prev =>
+                prev.map(room => {
+                    if (room.id === conversationId) {
+                        return { ...room, unreadCount: 0 }
+                    }
+                    return room
+                })
+            )
+        } catch (error) {
+            console.error("Lỗi khi đánh dấu tin nhắn đã đọc:", error)
+        }
     }, [user])
+
+    // Xóa tin nhắn
+    const deleteMessage = useCallback(async (messageId: number) => {
+        try {
+            await api.chat.deleteMessage(messageId)
+
+            // Cập nhật danh sách tin nhắn
+            setMessages(prev => prev.filter(msg => msg.id !== messageId))
+
+            toast({
+                title: "Thành công",
+                description: "Tin nhắn đã được xóa",
+            })
+        } catch (error) {
+            console.error("Lỗi khi xóa tin nhắn:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể xóa tin nhắn. Vui lòng thử lại sau.",
+                variant: "destructive"
+            })
+        }
+    }, [])
 
     // Tải tin nhắn từ API
     useEffect(() => {
         if (!user || !accessToken) return
 
-        const fetchMessages = async () => {
+        const fetchData = async () => {
             setIsLoading(true)
             try {
-                const data = await api.chat.getMessages()
-                const allMessages = [...data.received, ...data.sent].sort(
-                    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-                )
+                // Lấy danh sách cuộc trò chuyện
+                const conversations = await api.chat.getConversations()
+                setChatRooms(conversations)
 
-                updateChatRooms(allMessages)
-
-                // Nếu có active chat, lọc tin nhắn cho chat đó
+                // Nếu có active chat, lấy tin nhắn của cuộc trò chuyện đó
                 if (activeChat) {
-                    const chatMessages = allMessages.filter(msg =>
-                        (msg.sender.id === user.id && msg.receiver.id === activeChat.partner.id) ||
-                        (msg.receiver.id === user.id && msg.sender.id === activeChat.partner.id)
-                    )
-                    setMessages(chatMessages)
+                    const messages = await api.chat.getConversationMessages(activeChat.id)
+                    setMessages(messages)
+
+                    // Đánh dấu tin nhắn là đã đọc
+                    if (activeChat.unreadCount > 0) {
+                        markMessagesAsRead(activeChat.id)
+                    }
                 }
             } catch (error) {
-                console.error("Lỗi khi tải tin nhắn:", error)
+                console.error("Lỗi khi tải dữ liệu chat:", error)
+                toast({
+                    title: "Lỗi kết nối",
+                    description: "Không thể tải tin nhắn. Vui lòng thử lại sau.",
+                    variant: "destructive"
+                })
             } finally {
                 setIsLoading(false)
             }
         }
 
-        fetchMessages()
-    }, [user, accessToken, activeChat, updateChatRooms])
+        fetchData()
+    }, [user, accessToken, activeChat, markMessagesAsRead])
 
     // Thiết lập kết nối WebSocket khi active chat thay đổi
     useEffect(() => {
@@ -117,130 +193,224 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 socketRef.current = null
                 setIsConnected(false)
             }
+            // Xóa timeout tái kết nối nếu có
+            if (socketReconnectTimeoutRef.current) {
+                clearTimeout(socketReconnectTimeoutRef.current)
+                socketReconnectTimeoutRef.current = null
+            }
             return
         }
 
-        // Đóng kết nối cũ nếu có
-        if (socketRef.current) {
-            socketRef.current.close()
-        }
+        // Hàm kết nối WebSocket
+        const connectWebSocket = () => {
+            // Đóng kết nối cũ nếu có
+            if (socketRef.current) {
+                socketRef.current.close()
+            }
 
-        // Tạo room name từ ID người dùng và partner
-        const roomName = `private_${user.id}_${activeChat.partner.id}`
+            // Tạo URL WebSocket với token trong query string
+            const baseWsUrl = process.env.NEXT_PUBLIC_WS_URL || 'wss://spotifybackend.shop/ws/chat'
+            const wsUrl = `${baseWsUrl}/${activeChat.id}/?token=${encodeURIComponent(accessToken)}`
 
-        // Tạo kết nối WebSocket mới
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${roomName}/?token=${accessToken}`
+            console.log("Đang kết nối WebSocket:", wsUrl)
 
-        socketRef.current = new WebSocket(wsUrl)
+            // Khởi tạo WebSocket tiêu chuẩn với token trong URL
+            socketRef.current = new WebSocket(wsUrl)
 
-        // Xử lý sự kiện WebSocket
-        socketRef.current.onopen = () => {
-            console.log('WebSocket connection established')
-            setIsConnected(true)
-        }
+            // Xử lý sự kiện WebSocket
+            socketRef.current.onopen = () => {
+                console.log('WebSocket kết nối thành công')
+                setIsConnected(true)
 
-        socketRef.current.onmessage = (event) => {
-            const data: WebSocketMessage = JSON.parse(event.data)
-
-            // Xử lý tin nhắn mới nhận được
-            if (data.message && data.sender_id && data.timestamp) {
-                // Tìm thông tin người gửi từ user hiện tại hoặc partner
-                const sender = data.sender_id === user.id ? user : activeChat.partner
-                const receiver = data.sender_id === user.id ? activeChat.partner : user
-
-                // Tạo đối tượng tin nhắn mới
-                const newMessage: Message = {
-                    id: Date.now(), // Tạm thời dùng timestamp làm ID
-                    sender,
-                    receiver,
-                    content: data.message,
-                    timestamp: data.timestamp,
-                    is_read: sender.id !== user.id, // Tự động đánh dấu là đã đọc nếu người dùng hiện tại không phải người gửi
-                    message_type: 'TEXT',
-                    shared_song: null,
-                    shared_playlist: null,
-                    attachment: null,
-                    image: null,
-                    voice_note: null
+                // Xóa timeout tái kết nối nếu có
+                if (socketReconnectTimeoutRef.current) {
+                    clearTimeout(socketReconnectTimeoutRef.current)
+                    socketReconnectTimeoutRef.current = null
                 }
+            }
 
-                // Cập nhật danh sách tin nhắn
-                setMessages(prev => [...prev, newMessage])
+            socketRef.current.onmessage = (event) => {
+                const data = JSON.parse(event.data)
+                console.log("Nhận tin nhắn WebSocket:", data)
 
-                // Cập nhật chat room với tin nhắn mới nhất
-                setChatRooms(prev => {
-                    const updatedRooms = [...prev]
-                    const roomIndex = updatedRooms.findIndex(room => room.id === activeChat.id)
+                if (data.type === 'message' && data.data) {
+                    // Xử lý tin nhắn mới
+                    const msgData = data.data
 
-                    if (roomIndex >= 0) {
-                        updatedRooms[roomIndex] = {
-                            ...updatedRooms[roomIndex],
-                            lastMessage: newMessage,
-                            unreadCount: sender.id !== user.id ?
-                                updatedRooms[roomIndex].unreadCount + 1 :
-                                updatedRooms[roomIndex].unreadCount
-                        }
-
-                        // Sắp xếp lại để phòng có tin nhắn mới nhất lên đầu
-                        updatedRooms.sort((a, b) => {
-                            const timeA = new Date(a.lastMessage?.timestamp || 0).getTime()
-                            const timeB = new Date(b.lastMessage?.timestamp || 0).getTime()
-                            return timeB - timeA
-                        })
+                    // Tìm thông tin người gửi và người nhận từ tham số msgData
+                    const sender: User = {
+                        id: msgData.sender_id,
+                        username: msgData.sender_username || "Unknown",
+                        email: msgData.sender_email || "",
+                        avatar: msgData.sender_avatar || undefined
                     }
 
-                    return updatedRooms
+                    const receiver: User = {
+                        id: msgData.receiver_id,
+                        username: msgData.receiver_username || "Unknown",
+                        email: msgData.receiver_email || "",
+                        avatar: msgData.receiver_avatar || undefined
+                    }
+
+                    // Tạo đối tượng tin nhắn mới
+                    const newMessage: Message = {
+                        id: msgData.id,
+                        sender,
+                        receiver,
+                        content: msgData.message,
+                        timestamp: msgData.timestamp,
+                        is_read: sender.id !== user.id, // Tự động đánh dấu là đã đọc nếu người dùng hiện tại không phải người gửi
+                        message_type: msgData.message_type || 'TEXT',
+                        shared_song: msgData.song_id ? { id: msgData.song_id, title: msgData.song_title || "Loading...", artist: msgData.song_artist || "", duration: msgData.song_duration || 0 } : null,
+                        shared_playlist: msgData.playlist_id ? { id: msgData.playlist_id, title: msgData.playlist_title || "Loading...", created_by: msgData.playlist_created_by || "", created_at: msgData.playlist_created_at || "", is_public: msgData.playlist_is_public !== false } : null,
+                        attachment: msgData.attachment || null,
+                        image: msgData.image || null,
+                        voice_note: msgData.voice_note || null
+                    }
+
+                    // Cập nhật danh sách tin nhắn
+                    setMessages(prev => [...prev, newMessage])
+
+                    // Cập nhật chat room với tin nhắn mới nhất
+                    setChatRooms(prev => {
+                        const updatedRooms = [...prev]
+                        const roomIndex = updatedRooms.findIndex(room => room.id === activeChat.id)
+
+                        if (roomIndex >= 0) {
+                            updatedRooms[roomIndex] = {
+                                ...updatedRooms[roomIndex],
+                                lastMessage: newMessage,
+                                unreadCount: sender.id !== user.id ?
+                                    updatedRooms[roomIndex].unreadCount + 1 :
+                                    updatedRooms[roomIndex].unreadCount
+                            }
+
+                            // Sắp xếp lại để phòng có tin nhắn mới nhất lên đầu
+                            updatedRooms.sort((a, b) => {
+                                const timeA = new Date(a.lastMessage?.timestamp || 0).getTime()
+                                const timeB = new Date(b.lastMessage?.timestamp || 0).getTime()
+                                return timeB - timeA
+                            })
+                        }
+
+                        return updatedRooms
+                    })
+                } else if (data.type === 'error') {
+                    // Xử lý lỗi từ server
+                    console.error("WebSocket error từ server:", data.message)
+                    toast({
+                        title: "Lỗi chat",
+                        description: data.message || "Có lỗi xảy ra",
+                        variant: "destructive"
+                    })
+                }
+            }
+
+            socketRef.current.onclose = (event) => {
+                console.log('WebSocket đã đóng', event.code, event.reason)
+                setIsConnected(false)
+
+                // Mã lỗi từ tài liệu API
+                const errorMessages: { [key: number]: string } = {
+                    4001: "Bạn chưa đăng nhập",
+                    4004: "Không tìm thấy người dùng",
+                    4005: "Không tìm thấy cuộc trò chuyện",
+                    4006: "Tài khoản bị hạn chế chat",
+                    4007: "Tin nhắn không hợp lệ",
+                    4008: "Lỗi máy chủ"
+                }
+
+                // Kiểm tra nếu là lỗi từ máy chủ
+                if (errorMessages[event.code]) {
+                    toast({
+                        title: "Lỗi kết nối",
+                        description: errorMessages[event.code],
+                        variant: "destructive"
+                    })
+                }
+
+                // Kết nối lại sau 5 giây nếu không phải lỗi nghiêm trọng
+                if (event.code !== 4001 && event.code !== 4004 && event.code !== 4005 && event.code !== 4006) {
+                    socketReconnectTimeoutRef.current = setTimeout(() => {
+                        console.log("Đang thử kết nối lại WebSocket...")
+                        connectWebSocket()
+                    }, 5000)
+                }
+            }
+
+            socketRef.current.onerror = (error) => {
+                console.error('WebSocket error:', error)
+                setIsConnected(false)
+
+                toast({
+                    title: "Lỗi kết nối",
+                    description: "Không thể kết nối đến server chat",
+                    variant: "destructive"
                 })
             }
         }
 
-        socketRef.current.onclose = () => {
-            console.log('WebSocket connection closed')
-            setIsConnected(false)
-        }
+        // Kết nối WebSocket ban đầu
+        connectWebSocket()
 
-        socketRef.current.onerror = (error) => {
-            console.error('WebSocket error:', error)
-            setIsConnected(false)
-        }
-
-        // Cleanup khi component unmount
+        // Cleanup khi component unmount hoặc active chat thay đổi
         return () => {
             if (socketRef.current) {
                 socketRef.current.close()
             }
+            if (socketReconnectTimeoutRef.current) {
+                clearTimeout(socketReconnectTimeoutRef.current)
+            }
         }
     }, [user, activeChat, accessToken])
 
-    // Gửi tin nhắn qua REST API
+    // Gửi tin nhắn văn bản
     const sendMessage = useCallback(async (receiverId: string, content: string): Promise<Message> => {
         if (!user || !accessToken) {
             throw new Error("Bạn cần đăng nhập để gửi tin nhắn")
         }
 
         try {
+            let targetChatRoom = activeChat
+
+            // Nếu không có active chat hoặc active chat không phải với receiver hiện tại
+            if (!targetChatRoom || targetChatRoom.partner.id !== receiverId) {
+                // Tìm xem đã có chat room với receiver chưa
+                const existingRoom = chatRooms.find(r => r.partner.id === receiverId)
+
+                if (existingRoom) {
+                    // Nếu đã có, sử dụng chat room đó
+                    targetChatRoom = existingRoom
+                    setActiveChat(existingRoom)
+                } else {
+                    // Nếu chưa có, tạo conversation mới
+                    try {
+                        targetChatRoom = await startNewConversation(receiverId)
+                    } catch (error) {
+                        console.error("Lỗi khi tạo cuộc trò chuyện mới:", error)
+                        throw new Error("Không thể bắt đầu cuộc trò chuyện")
+                    }
+                }
+            }
+
             // Gửi tin nhắn qua REST API
             const newMessage = await api.chat.sendMessage(receiverId, content)
 
-            // Cập nhật danh sách tin nhắn nếu đang trong active chat
-            if (activeChat && activeChat.partner.id === receiverId) {
-                setMessages(prev => [...prev, newMessage])
-            }
+            // Cập nhật danh sách tin nhắn hiện tại
+            setMessages(prev => [...prev, newMessage])
 
             // Gửi tin nhắn qua WebSocket nếu đã kết nối
             if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
                 socketRef.current.send(JSON.stringify({
                     message: content,
-                    type: "chat_message"
-                }))
+                    message_type: "TEXT"
+                }));
             }
 
-            // Cập nhật chatRooms với tin nhắn mới
+            // Cập nhật chat rooms
             setChatRooms(prev => {
                 const updatedRooms = [...prev]
-                const roomId = `room_${user.id}_${receiverId}`
-                const roomIndex = updatedRooms.findIndex(room => room.id === roomId)
+                const roomIndex = updatedRooms.findIndex(room => room.id === targetChatRoom!.id)
 
                 if (roomIndex >= 0) {
                     // Cập nhật phòng hiện có
@@ -248,30 +418,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                         ...updatedRooms[roomIndex],
                         lastMessage: newMessage
                     }
-                } else {
-                    // Tạo phòng mới nếu chưa có
-                    const receiver = {
-                        id: receiverId,
-                        username: activeChat?.partner.username || "User",
-                        email: "",
-                        is_admin: false,
-                        avatar: activeChat?.partner.avatar
-                    }
 
-                    updatedRooms.push({
-                        id: roomId,
-                        partner: receiver,
+                    // Di chuyển lên đầu
+                    const updatedRoom = updatedRooms.splice(roomIndex, 1)[0]
+                    updatedRooms.unshift(updatedRoom)
+                } else {
+                    // Tạo phòng mới với đúng conversation.id
+                    updatedRooms.unshift({
+                        id: targetChatRoom!.id,
+                        partner: newMessage.receiver.id === user.id ? newMessage.sender : newMessage.receiver,
                         lastMessage: newMessage,
                         unreadCount: 0
                     })
                 }
-
-                // Sắp xếp lại để phòng có tin nhắn mới nhất lên đầu
-                updatedRooms.sort((a, b) => {
-                    const timeA = new Date(a.lastMessage?.timestamp || 0).getTime()
-                    const timeB = new Date(b.lastMessage?.timestamp || 0).getTime()
-                    return timeB - timeA
-                })
 
                 return updatedRooms
             })
@@ -279,9 +438,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             return newMessage
         } catch (error) {
             console.error("Lỗi khi gửi tin nhắn:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể gửi tin nhắn. Vui lòng thử lại sau.",
+                variant: "destructive"
+            })
             throw error
         }
-    }, [user, accessToken, activeChat])
+    }, [user, accessToken, activeChat, chatRooms, startNewConversation])
 
     // Chia sẻ bài hát
     const shareSong = useCallback(async (songId: string, receiverId: string, content: string): Promise<Message> => {
@@ -290,50 +454,56 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-            // Gửi yêu cầu chia sẻ bài hát qua REST API
-            const newMessage = await api.chat.shareSong(songId, receiverId, content)
+            let targetChatRoom = activeChat
 
-            // Cập nhật danh sách tin nhắn nếu đang trong active chat
-            if (activeChat && activeChat.partner.id === receiverId) {
-                setMessages(prev => [...prev, newMessage])
+            // Tương tự như sendMessage, kiểm tra và tạo cuộc trò chuyện nếu cần
+            if (!targetChatRoom || targetChatRoom.partner.id !== receiverId) {
+                const existingRoom = chatRooms.find(r => r.partner.id === receiverId)
+
+                if (existingRoom) {
+                    targetChatRoom = existingRoom
+                    setActiveChat(existingRoom)
+                } else {
+                    targetChatRoom = await startNewConversation(receiverId)
+                }
             }
 
-            // Cập nhật chatRooms với tin nhắn mới
+            // Gửi tin nhắn chia sẻ bài hát qua API
+            const newMessage = await api.chat.shareSong(receiverId, songId, content)
+
+            // Cập nhật danh sách tin nhắn
+            setMessages(prev => [...prev, newMessage])
+
+            // Gửi tin nhắn qua WebSocket nếu đã kết nối
+            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                socketRef.current.send(JSON.stringify({
+                    message: content,
+                    message_type: "SONG",
+                    song_id: songId
+                }));
+            }
+
+            // Cập nhật chat rooms
             setChatRooms(prev => {
                 const updatedRooms = [...prev]
-                const roomId = `room_${user.id}_${receiverId}`
-                const roomIndex = updatedRooms.findIndex(room => room.id === roomId)
+                const roomIndex = updatedRooms.findIndex(room => room.id === targetChatRoom!.id)
 
                 if (roomIndex >= 0) {
-                    // Cập nhật phòng hiện có
                     updatedRooms[roomIndex] = {
                         ...updatedRooms[roomIndex],
                         lastMessage: newMessage
                     }
-                } else {
-                    // Tạo phòng mới nếu chưa có
-                    const receiver = {
-                        id: receiverId,
-                        username: activeChat?.partner.username || "User",
-                        email: "",
-                        is_admin: false,
-                        avatar: activeChat?.partner.avatar
-                    }
 
-                    updatedRooms.push({
-                        id: roomId,
-                        partner: receiver,
+                    const updatedRoom = updatedRooms.splice(roomIndex, 1)[0]
+                    updatedRooms.unshift(updatedRoom)
+                } else {
+                    updatedRooms.unshift({
+                        id: targetChatRoom!.id,
+                        partner: newMessage.receiver.id === user.id ? newMessage.sender : newMessage.receiver,
                         lastMessage: newMessage,
                         unreadCount: 0
                     })
                 }
-
-                // Sắp xếp lại để phòng có tin nhắn mới nhất lên đầu
-                updatedRooms.sort((a, b) => {
-                    const timeA = new Date(a.lastMessage?.timestamp || 0).getTime()
-                    const timeB = new Date(b.lastMessage?.timestamp || 0).getTime()
-                    return timeB - timeA
-                })
 
                 return updatedRooms
             })
@@ -341,9 +511,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             return newMessage
         } catch (error) {
             console.error("Lỗi khi chia sẻ bài hát:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể chia sẻ bài hát. Vui lòng thử lại sau.",
+                variant: "destructive"
+            })
             throw error
         }
-    }, [user, accessToken, activeChat])
+    }, [user, accessToken, activeChat, chatRooms, startNewConversation])
 
     // Chia sẻ playlist
     const sharePlaylist = useCallback(async (playlistId: string, receiverId: string, content: string): Promise<Message> => {
@@ -352,50 +527,56 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-            // Gửi yêu cầu chia sẻ playlist qua REST API
-            const newMessage = await api.chat.sharePlaylist(playlistId, receiverId, content)
+            let targetChatRoom = activeChat
 
-            // Cập nhật danh sách tin nhắn nếu đang trong active chat
-            if (activeChat && activeChat.partner.id === receiverId) {
-                setMessages(prev => [...prev, newMessage])
+            // Tương tự như sendMessage, kiểm tra và tạo cuộc trò chuyện nếu cần
+            if (!targetChatRoom || targetChatRoom.partner.id !== receiverId) {
+                const existingRoom = chatRooms.find(r => r.partner.id === receiverId)
+
+                if (existingRoom) {
+                    targetChatRoom = existingRoom
+                    setActiveChat(existingRoom)
+                } else {
+                    targetChatRoom = await startNewConversation(receiverId)
+                }
             }
 
-            // Cập nhật chatRooms với tin nhắn mới
+            // Gửi tin nhắn chia sẻ playlist qua API
+            const newMessage = await api.chat.sharePlaylist(receiverId, playlistId, content)
+
+            // Cập nhật danh sách tin nhắn
+            setMessages(prev => [...prev, newMessage])
+
+            // Gửi tin nhắn qua WebSocket nếu đã kết nối
+            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                socketRef.current.send(JSON.stringify({
+                    message: content,
+                    message_type: "PLAYLIST",
+                    playlist_id: playlistId
+                }));
+            }
+
+            // Cập nhật chat rooms
             setChatRooms(prev => {
                 const updatedRooms = [...prev]
-                const roomId = `room_${user.id}_${receiverId}`
-                const roomIndex = updatedRooms.findIndex(room => room.id === roomId)
+                const roomIndex = updatedRooms.findIndex(room => room.id === targetChatRoom!.id)
 
                 if (roomIndex >= 0) {
-                    // Cập nhật phòng hiện có
                     updatedRooms[roomIndex] = {
                         ...updatedRooms[roomIndex],
                         lastMessage: newMessage
                     }
-                } else {
-                    // Tạo phòng mới nếu chưa có
-                    const receiver = {
-                        id: receiverId,
-                        username: activeChat?.partner.username || "User",
-                        email: "",
-                        is_admin: false,
-                        avatar: activeChat?.partner.avatar
-                    }
 
-                    updatedRooms.push({
-                        id: roomId,
-                        partner: receiver,
+                    const updatedRoom = updatedRooms.splice(roomIndex, 1)[0]
+                    updatedRooms.unshift(updatedRoom)
+                } else {
+                    updatedRooms.unshift({
+                        id: targetChatRoom!.id,
+                        partner: newMessage.receiver.id === user.id ? newMessage.sender : newMessage.receiver,
                         lastMessage: newMessage,
                         unreadCount: 0
                     })
                 }
-
-                // Sắp xếp lại để phòng có tin nhắn mới nhất lên đầu
-                updatedRooms.sort((a, b) => {
-                    const timeA = new Date(a.lastMessage?.timestamp || 0).getTime()
-                    const timeB = new Date(b.lastMessage?.timestamp || 0).getTime()
-                    return timeB - timeA
-                })
 
                 return updatedRooms
             })
@@ -403,9 +584,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             return newMessage
         } catch (error) {
             console.error("Lỗi khi chia sẻ playlist:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể chia sẻ playlist. Vui lòng thử lại sau.",
+                variant: "destructive"
+            })
             throw error
         }
-    }, [user, accessToken, activeChat])
+    }, [user, accessToken, activeChat, chatRooms, startNewConversation])
 
     return (
         <ChatContext.Provider value={{
@@ -413,11 +599,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             chatRooms,
             messages,
             isLoading,
+            searchResults,
+            searchTerm,
+            isSearching,
             sendMessage,
             shareSong,
             sharePlaylist,
+            searchUsers,
+            startNewConversation,
             setActiveChat,
-            isConnected
+            setMessages,
+            isConnected,
+            markMessagesAsRead,
+            deleteMessage
         }}>
             {children}
         </ChatContext.Provider>
