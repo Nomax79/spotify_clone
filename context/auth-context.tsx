@@ -5,6 +5,23 @@ import { useRouter } from "next/navigation"
 import { api } from "@/lib/api"
 import { User } from "@/types"
 
+interface LoginUserResponse {
+  id: number;
+  username: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  avatar?: string | null;
+  bio?: string;
+  is_admin: boolean;
+}
+
+interface ApiResponse {
+  access: string;
+  refresh: string;
+  user: LoginUserResponse;
+}
+
 type AuthContextType = {
   user: User | null
   isLoading: boolean
@@ -21,7 +38,7 @@ type AuthContextType = {
     first_name?: string;
     last_name?: string;
     bio?: string;
-  }) => Promise<void>
+  }) => Promise<any>
   logout: () => void
 }
 
@@ -66,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           console.error("Không thể refresh token");
           // Nếu không refresh được, đăng xuất
-          logout();
+          handleLogout();
         }
       } catch (error) {
         console.error("Lỗi khi refresh token:", error);
@@ -92,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDataParsed = JSON.parse(userDataStr)
 
           // Đảm bảo id là string
-          const userData = {
+          const userData: User = {
             ...userDataParsed,
             id: String(userDataParsed.id)
           }
@@ -117,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("===== BẮT ĐẦU QUÁ TRÌNH ĐĂNG NHẬP =====")
       // Call the login API
-      const response = await api.auth.login(email, password)
+      const response = await api.auth.login(email, password) as ApiResponse
       const { access, refresh } = response
       console.log("Đăng nhập thành công, nhận được token:", { access: access.substring(0, 15) + "..." })
 
@@ -129,9 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Lấy thông tin người dùng mới nhất từ API
       try {
-        const userData = await api.auth.getUserInfo()
+        const userData = await api.auth.getUserInfo() as User
         // Đảm bảo id là string để phù hợp với type User
-        const userDataFormatted = {
+        const userDataFormatted: User = {
           ...userData,
           id: String(userData.id)
         }
@@ -166,9 +183,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Không thể lấy thông tin người dùng từ API:", error)
 
         // Sử dụng thông tin từ response login nếu không lấy được từ API
-        const userDataFromLogin = {
-          ...response.user,
-          id: String(response.user.id)
+        const userDataFromLogin: User = {
+          id: String(response.user.id),
+          username: response.user.username,
+          email: response.user.email,
+          first_name: response.user.first_name,
+          last_name: response.user.last_name,
+          bio: response.user.bio,
+          is_admin: response.user.is_admin,
+          avatar: response.user.avatar ? response.user.avatar : undefined
         }
 
         setUser(userDataFromLogin)
@@ -265,7 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const userDataParsed = JSON.parse(userDataStr)
 
                 // Đảm bảo id là string
-                const userData = {
+                const userData: User = {
                   ...userDataParsed,
                   id: String(userDataParsed.id)
                 }
@@ -345,7 +368,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = () => {
+  const handleLogout = () => {
     // Gọi API đăng xuất (hiện đã được cập nhật để gửi refresh token)
     api.auth.logout().then(() => {
       // Xóa dữ liệu token và user từ state
@@ -363,6 +386,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push("/login");
     });
   }
+
+  // Hàm logout để export qua context
+  const logout = handleLogout;
 
   return (
     <AuthContext.Provider

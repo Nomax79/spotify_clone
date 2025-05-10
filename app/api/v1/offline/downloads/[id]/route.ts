@@ -3,50 +3,50 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { downloads as downloadsStore } from "../shared-store";
 
-// GET: Lấy thông tin chi tiết của một download
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession(authOptions);
+// // GET: Lấy thông tin chi tiết của một download
+// export async function GET(
+//   req: NextRequest,
+//   { params }: { params: { id: string } }
+// ) {
+//   try {
+//     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+//     if (!session || !session.user) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
 
-    const userId = session.user.id?.toString() || "";
-    const downloadId = parseInt(params.id);
+//     const userId = session.user.id?.toString() || "";
+//     const downloadId = parseInt(params.id);
 
-    if (isNaN(downloadId)) {
-      return NextResponse.json(
-        { error: "Invalid download ID" },
-        { status: 400 }
-      );
-    }
+//     if (isNaN(downloadId)) {
+//       return NextResponse.json(
+//         { error: "Invalid download ID" },
+//         { status: 400 }
+//       );
+//     }
 
-    // Lấy danh sách tải xuống của người dùng
-    const userDownloads = downloadsStore[userId] || [];
+//     // Lấy danh sách tải xuống của người dùng
+//     const userDownloads = downloadsStore[userId] || [];
 
-    // Tìm download theo ID
-    const download = userDownloads.find((d) => d.id === downloadId);
+//     // Tìm download theo ID
+//     const download = userDownloads.find((d) => d.id === downloadId);
 
-    if (!download) {
-      return NextResponse.json(
-        { error: "Download not found" },
-        { status: 404 }
-      );
-    }
+//     if (!download) {
+//       return NextResponse.json(
+//         { error: "Download not found" },
+//         { status: 404 }
+//       );
+//     }
 
-    return NextResponse.json(download, { status: 200 });
-  } catch (error) {
-    console.error("Error fetching download:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json(download, { status: 200 });
+//   } catch (error) {
+//     console.error("Error fetching download:", error);
+//     return NextResponse.json(
+//       { error: "Internal Server Error" },
+//       { status: 500 }
+//     );
+//   }
+// }
 
 // DELETE: Xóa một download
 export async function DELETE(
