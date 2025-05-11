@@ -132,9 +132,6 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative">
-      <Link href="/" className="absolute top-4 left-4 text-white flex items-center gap-1 hover:text-green-500 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Quay lại trang chủ
-      </Link>
 
       <div className="w-full max-w-md bg-zinc-900 rounded-lg p-8">
         <div className="flex justify-center mb-8">

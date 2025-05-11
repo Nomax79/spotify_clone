@@ -282,7 +282,7 @@ export class AuthCollection extends ApiRequest {
     token: string,
     newPassword: string
   ) {
-    return this.post<any>("/api/v1/accounts/auth/verify-reset-token/", {
+    return this.post<any>("/api/v1/accounts/auth/reset-password/", {
       email,
       token,
       new_password: newPassword,

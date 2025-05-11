@@ -123,6 +123,11 @@ export default function LoginPage() {
                   />
                 </FormControl>
                 <FormMessage />
+                <div className="mt-1 text-right">
+                  <Link href="/forgot-password" className="text-sm text-green-500 hover:text-green-400">
+                    Quên mật khẩu?
+                  </Link>
+                </div>
               </FormItem>
             )}
           />
