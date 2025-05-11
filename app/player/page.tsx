@@ -21,7 +21,7 @@ import {
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { musicApi } from "@/lib/api"
+import  postmanApi  from "@/lib/api/postman"
 import type { Song } from "@/types"
 
 export default function PlayerPage() {
@@ -55,15 +55,15 @@ export default function PlayerPage() {
       if (!songId) return
 
       try {
-        const song = await musicApi.getSong(songId)
+        const song = await postmanApi.music.getSong(songId)
         setCurrentSong(song)
 
         // Fetch related songs (in a real app, you would have an API for this)
-        const trending = await musicApi.getTrendingSongs()
-        setRelatedSongs(trending.filter((s) => s.id !== songId).slice(0, 5))
+        const trending = await postmanApi.music.getTrendingSongs()
+        setRelatedSongs(trending.filter((s: { id: string }) => s.id !== songId).slice(0, 5))
 
         // Set up queue (in a real app, this would be more sophisticated)
-        setQueue([...trending.filter((s) => s.id !== songId).slice(0, 10)])
+        setQueue([...trending.filter((s: { id: string }) => s.id !== songId).slice(0, 10)])
       } catch (error) {
         console.error("Error fetching song:", error)
       }
@@ -158,7 +158,7 @@ export default function PlayerPage() {
     if (!currentSong) return
 
     try {
-      await musicApi.likeSong(currentSong.id)
+      await postmanApi.music.likeSong(currentSong.id)
       setIsLiked(!isLiked)
     } catch (error) {
       console.error("Error liking song:", error)

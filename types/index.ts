@@ -47,6 +47,7 @@ export interface Song {
   cover_image?: string | null | undefined;
   play_count?: number;
   likes_count?: number;
+  file_path?: string
 }
 
 export interface Playlist {
