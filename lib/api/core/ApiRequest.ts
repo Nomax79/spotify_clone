@@ -82,6 +82,13 @@ export class ApiRequest {
       // Thực hiện request
       const response = await fetch(url.toString(), options);
 
+      // Kiểm tra content-type để đảm bảo response là JSON
+      const contentType = response.headers.get("content-type");
+      if (contentType && !contentType.includes("application/json")) {
+        console.error(`Unexpected content type: ${contentType}`);
+        throw new Error(`API returned non-JSON response: ${contentType}`);
+      }
+
       // Xử lý refresh token nếu token hết hạn (401)
       if (response.status === 401 && token) {
         console.log("Token hết hạn, đang thử refresh token...");
@@ -133,8 +140,13 @@ export class ApiRequest {
         return blob as unknown as T;
       } else {
         // Parse JSON response
-        const result = await response.json();
-        return result as T;
+        try {
+          const result = await response.json();
+          return result as T;
+        } catch (error) {
+          console.error("Failed to parse JSON response:", error);
+          throw new Error("API returned invalid JSON");
+        }
       }
     } catch (error) {
       console.error("API request failed:", error);
