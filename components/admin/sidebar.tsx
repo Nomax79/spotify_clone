@@ -20,7 +20,8 @@ import {
   BarChart,
   Tag,
   Mic,
-  PlaySquare
+  PlaySquare,
+  MessagesSquare
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -62,8 +63,6 @@ export default function AdminSidebar({ onToggle }: AdminSidebarProps) {
     { id: "users", label: "Người dùng", icon: Users, href: "/admin/users" },
     { id: "artists", label: "Nghệ sĩ", icon: Mic, href: "/admin/artists" },
     { id: "topSongs", label: "Top bài hát", icon: Music, href: "/admin/reports/top-songs" },
-    { id: "topGenres", label: "Top thể loại", icon: BarChart, href: "/admin/reports/top-genres" },
-    { id: "messages", label: "Tin nhắn", icon: MessageSquare, href: "/admin/messages" },
     { id: "songs", label: "Bài hát", icon: Music, href: "/admin/songs" },
     { id: "albums", label: "Album", icon: Disc, href: "/admin/albums" },
     { id: "playlists", label: "Playlist", icon: PlaySquare, href: "/admin/playlists" },
