@@ -24,6 +24,7 @@ interface SongRowProps {
     showAlbum?: boolean
     showArtist?: boolean
     isActive?: boolean
+    hideOptions?: boolean
 }
 
 export function SongRow({
@@ -32,7 +33,8 @@ export function SongRow({
     songs = [],
     showAlbum = true,
     showArtist = true,
-    isActive = false
+    isActive = false,
+    hideOptions = false
 }: SongRowProps) {
     const { play, currentSong, isPlaying, togglePlay, addToQueue, playlist: currentPlaylist } = usePlayer()
     const { user } = useAuth()
@@ -167,92 +169,96 @@ export function SongRow({
             <div className="col-span-3"></div>
 
             {/* Nút yêu thích và các tùy chọn */}
-            <div className="col-span-1 flex items-center opacity-0 group-hover:opacity-100">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-8 h-8 text-zinc-400 hover:text-white"
-                >
-                    <Heart className="h-4 w-4" />
-                </Button>
-            </div>
-
-            {/* Thời lượng */}
-            <div className="col-span-1 text-right text-zinc-400">
-                {formatDuration(song.duration)}
-            </div>
-
-            {/* Menu tùy chọn */}
-            <div className="col-span-1 flex justify-end opacity-0 group-hover:opacity-100">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+            {!hideOptions && (
+                <>
+                    <div className="col-span-1 flex items-center opacity-0 group-hover:opacity-100">
                         <Button
                             variant="ghost"
                             size="icon"
                             className="w-8 h-8 text-zinc-400 hover:text-white"
                         >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <Heart className="h-4 w-4" />
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-800 text-white">
-                        <DropdownMenuItem
-                            className="cursor-pointer hover:bg-zinc-800"
-                            onClick={handleAddToQueue}
-                        >
-                            {isCurrentSong ? (
-                                <>
-                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                    <span>Đang phát</span>
-                                </>
-                            ) : isInQueue ? (
-                                <>
-                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                    <span>Đã có trong hàng đợi</span>
-                                </>
-                            ) : (
-                                <>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    <span>Thêm vào hàng đợi</span>
-                                </>
-                            )}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-zinc-800" />
-                        <DropdownMenuItem
-                            className="cursor-pointer hover:bg-zinc-800"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toast({
-                                    title: "Tính năng đang phát triển",
-                                    description: "Chức năng thêm vào playlist sẽ được cập nhật trong phiên bản tiếp theo.",
-                                });
-                            }}
-                        >
-                            <ListMusic className="mr-2 h-4 w-4" />
-                            <span>Thêm vào playlist</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-zinc-800" />
+                    </div>
 
-                        {/* Nút tải xuống trực tiếp */}
-                        <DropdownMenuItem
-                            className="cursor-pointer hover:bg-zinc-800"
-                            onClick={handleDownload}
-                            disabled={isProcessing || isDownloading || !user}
-                        >
-                            {isProcessing || isDownloading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    <span>Đang tải xuống...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    <span>Tải xuống bài hát</span>
-                                </>
-                            )}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
+                    {/* Thời lượng */}
+                    <div className="col-span-1 text-right text-zinc-400">
+                        {formatDuration(song.duration)}
+                    </div>
+
+                    {/* Menu tùy chọn */}
+                    <div className="col-span-1 flex justify-end opacity-0 group-hover:opacity-100">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="w-8 h-8 text-zinc-400 hover:text-white"
+                                >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-800 text-white">
+                                <DropdownMenuItem
+                                    className="cursor-pointer hover:bg-zinc-800"
+                                    onClick={handleAddToQueue}
+                                >
+                                    {isCurrentSong ? (
+                                        <>
+                                            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                            <span>Đang phát</span>
+                                        </>
+                                    ) : isInQueue ? (
+                                        <>
+                                            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                            <span>Đã có trong hàng đợi</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            <span>Thêm vào hàng đợi</span>
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-zinc-800" />
+                                <DropdownMenuItem
+                                    className="cursor-pointer hover:bg-zinc-800"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toast({
+                                            title: "Tính năng đang phát triển",
+                                            description: "Chức năng thêm vào playlist sẽ được cập nhật trong phiên bản tiếp theo.",
+                                        });
+                                    }}
+                                >
+                                    <ListMusic className="mr-2 h-4 w-4" />
+                                    <span>Thêm vào playlist</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-zinc-800" />
+
+                                {/* Nút tải xuống trực tiếp */}
+                                <DropdownMenuItem
+                                    className="cursor-pointer hover:bg-zinc-800"
+                                    onClick={handleDownload}
+                                    disabled={isProcessing || isDownloading || !user}
+                                >
+                                    {isProcessing || isDownloading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            <span>Đang tải xuống...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            <span>Tải xuống bài hát</span>
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </>
+            )}
         </div>
     )
 } 

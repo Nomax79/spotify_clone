@@ -124,22 +124,25 @@ export default function CreatePlaylistPage() {
         try {
             setLoading(true)
 
-            // Tạo playlist mới
-            const playlistData = {
-                name,
-                description: description.trim() || undefined,
-                is_public: isPublic
+            // Tạo FormData với tất cả thông tin
+            const formData = new FormData();
+            formData.append('name', name);
+
+            if (description.trim()) {
+                formData.append('description', description);
             }
 
-            const response = await postmanApi.music.createPlaylist(playlistData)
+            formData.append('is_public', isPublic.toString());
+            // Thêm trường is_collaborative (mặc định là false)
+            formData.append('is_collaborative', 'false');
 
-            // Nếu có hình ảnh bìa, tải lên
-            if (coverImage && response.id) {
-                const formData = new FormData()
-                formData.append('cover_image', coverImage)
-
-                await postmanApi.music.updatePlaylistCover(response.id.toString(), formData)
+            // Thêm ảnh bìa nếu có
+            if (coverImage) {
+                formData.append('cover_image_upload', coverImage);
             }
+
+            // Gửi tất cả trong một request
+            const response = await postmanApi.music.createPlaylist(formData);
 
             toast({
                 title: "Thành công",

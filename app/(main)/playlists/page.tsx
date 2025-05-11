@@ -69,7 +69,21 @@ export default function PlaylistsPage() {
 
                 try {
                     // Lấy tất cả playlist
-                    playlistsData = await postmanApi.music.getPlaylists() as PlaylistApiResponse[];
+                    const response = await postmanApi.music.getPlaylists();
+
+                    // Kiểm tra dữ liệu trả về có đúng định dạng không
+                    if (!Array.isArray(response)) {
+                        console.error("Dữ liệu playlists không phải là mảng:", response);
+                        // Nếu không phải là mảng, kiểm tra xem có phải là định dạng phân trang không
+                        if (response && typeof response === 'object' && 'results' in response && Array.isArray(response.results)) {
+                            playlistsData = response.results as PlaylistApiResponse[];
+                        } else {
+                            // Nếu không, sử dụng mock data
+                            playlistsData = getUserPlaylists();
+                        }
+                    } else {
+                        playlistsData = response as PlaylistApiResponse[];
+                    }
                 } catch (error) {
                     console.error("Lỗi khi lấy playlists:", error);
                     // Mock data nếu API gặp lỗi
@@ -79,6 +93,16 @@ export default function PlaylistsPage() {
                 try {
                     // Lấy playlist nổi bật
                     featuredData = await postmanApi.music.getFeaturedPlaylists() as FeaturedPlaylistsResponse;
+                    // Đảm bảo dữ liệu trả về có định dạng đúng
+                    if (!featuredData || !featuredData.playlists) {
+                        console.error("Dữ liệu featured playlists không đúng định dạng:", featuredData);
+                        featuredData = {
+                            playlists: getFeaturedPlaylists(),
+                            total: 10,
+                            page: 1,
+                            page_size: 20
+                        };
+                    }
                 } catch (error) {
                     console.error("Lỗi khi lấy featured playlists:", error);
                     // Mock data nếu API gặp lỗi
@@ -108,10 +132,14 @@ export default function PlaylistsPage() {
                 })
 
                 // Định dạng dữ liệu playlist
-                const formattedPlaylists = playlistsData.map(formatApiPlaylist)
+                const formattedPlaylists = Array.isArray(playlistsData)
+                    ? playlistsData.map((playlist: PlaylistApiResponse) => formatApiPlaylist(playlist))
+                    : [];
 
                 // Định dạng dữ liệu playlist nổi bật
-                const formattedFeatured = featuredData.playlists.map(formatApiPlaylist)
+                const formattedFeatured = featuredData && featuredData.playlists && Array.isArray(featuredData.playlists)
+                    ? featuredData.playlists.map((playlist: PlaylistApiResponse) => formatApiPlaylist(playlist))
+                    : [];
 
                 // Lọc playlist của người dùng hiện tại
                 const currentUserPlaylists = formattedPlaylists.filter(

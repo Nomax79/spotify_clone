@@ -396,7 +396,18 @@ export class MusicCollection extends ApiRequest {
   }
 
   getFeaturedPlaylists() {
-    return this.get<any>("/api/v1/music/playlists/featured/");
+    // Lấy danh sách playlist thông thường nhưng định dạng kết quả trả về cho phù hợp
+    return this.get<any>("/api/v1/music/playlists/").then((data) => {
+      if (Array.isArray(data)) {
+        return {
+          playlists: data,
+          total: data.length,
+          page: 1,
+          page_size: data.length,
+        };
+      }
+      return data;
+    });
   }
 
   getTrendingSongs() {
@@ -609,7 +620,7 @@ export class MusicCollection extends ApiRequest {
 
   // Thêm phương thức mới theo tài liệu API
   removeFromFavorites(songId: string) {
-    return this.delete<any>(`/api/v1/music/favorites/`, {
+    return this.post<any>(`/api/v1/music/favorites/remove/`, {
       song_id: songId,
     });
   }
@@ -646,7 +657,9 @@ export class MusicCollection extends ApiRequest {
   }
 
   unfollowPlaylist(playlistId: string) {
-    return this.delete<any>(`/api/v1/music/playlists/${playlistId}/follow/`);
+    return this.post<any>(`/api/v1/music/playlists/${playlistId}/follow/`, {
+      action: "unfollow",
+    });
   }
 
   // Thêm các phương thức mới cho playlist

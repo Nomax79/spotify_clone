@@ -19,17 +19,23 @@ export class MusicCollection extends ApiRequest implements IMusicCollection {
     return this.get<PlaylistData>(`/api/v1/music/playlists/${id}/`);
   }
 
-  createPlaylist(data: FormData) {
-    return this.request<PlaylistData>(
-      "POST",
-      "/api/v1/music/playlists/",
-      data,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
+  createPlaylist(
+    data: FormData | { name: string; description?: string; is_public?: boolean }
+  ) {
+    if (data instanceof FormData) {
+      return this.request<PlaylistData>(
+        "POST",
+        "/api/v1/music/playlists/",
+        data,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+    } else {
+      return this.post<PlaylistData>("/api/v1/music/playlists/", data);
+    }
   }
 
   updatePlaylist(playlistId: string | number, data: FormData) {
@@ -69,7 +75,9 @@ export class MusicCollection extends ApiRequest implements IMusicCollection {
   }
 
   unfollowPlaylist(playlistId: string) {
-    return this.delete<void>(`/api/v1/music/playlists/${playlistId}/follow/`);
+    return this.post<void>(`/api/v1/music/playlists/${playlistId}/follow/`, {
+      action: "unfollow",
+    });
   }
 
   checkFollowingPlaylist(playlistId: string) {
@@ -87,6 +95,26 @@ export class MusicCollection extends ApiRequest implements IMusicCollection {
       `/api/v1/music/playlists/${playlistId}/toggle_privacy/`,
       {}
     );
+  }
+
+  updateCoverImage(playlistId: string, data: FormData | { song_id: string }) {
+    if (data instanceof FormData) {
+      return this.request<Partial<PlaylistData>>(
+        "POST",
+        `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+        data,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+    } else {
+      return this.post<Partial<PlaylistData>>(
+        `/api/v1/music/playlists/${playlistId}/update_cover_image/`,
+        data
+      );
+    }
   }
 
   sharePlaylist(playlistId: string, receiverId: string, content: string) {

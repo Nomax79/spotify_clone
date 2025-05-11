@@ -107,15 +107,21 @@ export class PlaylistService extends ApiRequest {
 
   /**
    * Cập nhật thông tin playlist
-   * @param id ID playlist
-   * @param data Thông tin cần cập nhật
+   * @param playlistId ID playlist
+   * @param data FormData chứa thông tin cập nhật
    * @returns Thông tin playlist sau khi cập nhật
    */
-  async updatePlaylist(
-    id: string,
-    data: { name?: string; description?: string; is_public?: boolean }
-  ) {
-    return this.put<PlaylistData>(`/api/v1/music/playlists/${id}/`, data);
+  async updatePlaylist(playlistId: string | number, data: FormData) {
+    return this.request<PlaylistData>(
+      "PATCH",
+      `/api/v1/music/playlists/${playlistId}/`,
+      data,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
   }
 
   /**
@@ -177,7 +183,9 @@ export class PlaylistService extends ApiRequest {
    * @returns Kết quả bỏ theo dõi
    */
   async unfollowPlaylist(playlistId: string) {
-    return this.delete(`/api/v1/music/playlists/${playlistId}/follow/`);
+    return this.post(`/api/v1/music/playlists/${playlistId}/follow/`, {
+      action: "unfollow",
+    });
   }
 
   /**
@@ -241,14 +249,6 @@ export class PlaylistService extends ApiRequest {
     return this.post(`/api/v1/music/share/playlist/${playlistId}/`, {
       receiver_id: receiverId,
       content,
-    });
-  }
-
-  updatePlaylist(playlistId: string | number, data: FormData) {
-    return this.api.patch(`/api/v1/music/playlists/${playlistId}/`, data, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
     });
   }
 }

@@ -13,6 +13,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import PlaylistFollowersModal from "@/components/music/PlaylistFollowersModal"
 import PlaylistPrivacyToggle from "@/components/music/PlaylistPrivacyToggle"
 import PlaylistSharingComponent from "@/components/music/PlaylistSharingComponent"
+import DeletePlaylistButton from "@/components/music/DeletePlaylistButton"
+import { usePlaylist } from "@/context/playlist-context"
 
 interface Song {
     id: string
@@ -53,14 +55,21 @@ export default function PlaylistPage() {
     const { user } = useAuth()
     const { toast } = useToast()
     const { play, isPlaying, currentSong, pause, resume, addToQueue } = usePlayer()
+    const {
+        currentPlaylist,
+        getPlaylist,
+        isLoading,
+        followPlaylist,
+        unfollowPlaylist,
+        togglePlaylistPrivacy,
+        removeSongFromPlaylist
+    } = usePlaylist()
 
-    const [playlist, setPlaylist] = useState<Playlist | null>(null)
-    const [songs, setSongs] = useState<Song[]>([])
-    const [loading, setLoading] = useState(true)
     const [isFollowing, setIsFollowing] = useState(false)
     const [isOwner, setIsOwner] = useState(false)
     const [privacyStatus, setPrivacyStatus] = useState<boolean>(true)
     const [followersCount, setFollowersCount] = useState<number>(0)
+    const [songs, setSongs] = useState<Song[]>([])
 
     useEffect(() => {
         if (!user) {
@@ -70,149 +79,52 @@ export default function PlaylistPage() {
 
         if (!playlistId) return
 
-        async function fetchPlaylistDetails() {
+        // Tải chi tiết playlist
+        const fetchPlaylistDetails = async () => {
             try {
-                setLoading(true)
+                // Thêm tham số để biết là mã này chỉ chạy một lần
+                const loadingFlag = isLoading;
+                if (!loadingFlag) return; // Đã tải rồi thì không tải lại nữa
 
-                try {
-                    // Lấy chi tiết playlist
-                    const response = await postmanApi.music.getPlaylist(playlistId)
+                const playlist = await getPlaylist(playlistId)
 
-                    // Xử lý dữ liệu playlist
-                    const playlistData = {
-                        ...response,
-                        songs: response.songs || []
-                    }
-
-                    // Kiểm tra xem user hiện tại có phải là chủ sở hữu không
-                    if (playlistData.user && user) {
-                        setIsOwner(String(playlistData.user.id) === String(user.id))
-                    }
-
-                    // Lưu trạng thái public và số lượng người theo dõi 
-                    setPrivacyStatus(playlistData.is_public)
-                    setFollowersCount(playlistData.followers_count || 0)
-
-                    // Định dạng lại dữ liệu bài hát nếu cần
-                    const formattedSongs = (playlistData.songs || []).map((song: any) => ({
-                        id: song.id,
-                        title: song.title || song.name,
-                        artist: song.artist,
-                        album: song.album,
-                        duration: song.duration || 0,
-                        audio_url: song.audio_url || song.audio_file,
-                        audio_file: song.audio_file,
-                        cover_image: song.cover_image,
-                        play_count: song.play_count || 0,
-                        likes_count: song.likes_count || 0,
-                        is_liked: song.is_liked || false
-                    }))
-
-                    setPlaylist(playlistData)
-                    setSongs(formattedSongs)
-
-                    // Kiểm tra xem user hiện tại có đang theo dõi playlist này không
-                    try {
-                        // Kiểm tra nếu API trả về thông tin theo dõi
-                        if (response.is_following !== undefined) {
-                            setIsFollowing(Boolean(response.is_following))
-                        } else {
-                            // Nếu không có thông tin theo dõi trong response, gọi API riêng
-                            const followStatus = await postmanApi.music.checkFollowingPlaylist(playlistId)
-                            setIsFollowing(followStatus?.following || false)
-                        }
-                    } catch (error) {
-                        console.error("Không thể kiểm tra trạng thái theo dõi:", error)
-                        // Mặc định là không theo dõi nếu có lỗi
-                        setIsFollowing(false)
-                    }
-                } catch (error) {
-                    console.error("Lỗi khi lấy chi tiết playlist, sử dụng mock data:", error)
-
-                    // Sử dụng mock data khi API gặp lỗi
-                    const mockPlaylist = getMockPlaylist(playlistId);
-                    const mockSongs = mockPlaylist.songs || [];
-
-                    setPlaylist(mockPlaylist);
-                    setSongs(mockSongs);
-                    setIsOwner(mockPlaylist.user?.id === user?.id);
-                    setIsFollowing(false);
-
+                if (!playlist) {
                     toast({
-                        title: "Chú ý",
-                        description: "Đang sử dụng dữ liệu tạm thời. Kết nối với server đang gặp sự cố.",
-                        variant: "default",
-                    });
+                        title: "Lỗi",
+                        description: "Không thể tải thông tin playlist. Vui lòng thử lại sau.",
+                        variant: "destructive",
+                    })
+                    return
+                }
+
+                // Kiểm tra xem user hiện tại có phải là chủ sở hữu không
+                if (playlist.user && user) {
+                    const isUserOwner = String(playlist.user.id) === String(user.id);
+                    console.log('DEBUG: User ID:', user.id, 'Playlist Owner ID:', playlist.user.id, 'IsOwner:', isUserOwner);
+                    setIsOwner(isUserOwner)
+                }
+
+                // Lưu trạng thái public và số lượng người theo dõi
+                setPrivacyStatus(playlist.is_public)
+                setFollowersCount(playlist.followers_count || 0)
+                setIsFollowing(!!playlist.is_following)
+
+                // Xử lý danh sách bài hát
+                if (playlist.songs && playlist.songs.length > 0) {
+                    setSongs(playlist.songs)
                 }
             } catch (error) {
-                console.error("Lỗi khi lấy chi tiết playlist:", error)
+                console.error("Lỗi khi tải thông tin playlist:", error)
                 toast({
                     title: "Lỗi",
                     description: "Không thể tải thông tin playlist. Vui lòng thử lại sau.",
                     variant: "destructive",
                 })
-            } finally {
-                setLoading(false)
             }
         }
 
-        // Hàm tạo mock data khi API gặp lỗi
-        function getMockPlaylist(id: string): Playlist {
-            // Sử dụng id từ URL để tạo mock data có tính logic
-            return {
-                id: id,
-                name: `Playlist #${id}`,
-                description: "Playlist này đang được hiển thị ở chế độ ngoại tuyến.",
-                is_public: true,
-                cover_image: "https://spotifybackend.shop/media/covers/2025/05/01/Bi%E1%BB%83n_Nh%E1%BB%9B.jpg",
-                user: {
-                    id: user?.id ? Number(user.id) : 1,
-                    username: user?.username || "admin",
-                    avatar: null
-                },
-                songs_count: 15,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                songs: [
-                    {
-                        id: "1",
-                        title: "Sài Gòn Buồn Quá Em Ơi (Jazzhop)",
-                        artist: "Dế Choắt, Jason",
-                        album: "Chạm Đáy Nỗi Đau",
-                        duration: 316,
-                        audio_file: "https://spotifybackend.shop/media/songs/2025/05/01/saigonbuonquaemoijazzhop-dechoatjason-8053816.mp3",
-                        cover_image: "https://spotifybackend.shop/media/covers/2025/05/01/S%C3%A0i_G%C3%B2n_Bu%E1%BB%93n_Qu%C3%A1_Em_%C6%A0i_Jazzhop.jpg",
-                        play_count: 103,
-                        likes_count: 31
-                    },
-                    {
-                        id: "14",
-                        title: "Tình Nhớ",
-                        artist: "Thanh Hiền",
-                        album: "NhacCuaTui.com",
-                        duration: 229,
-                        audio_file: "https://spotifybackend.shop/media/songs/2025/05/01/tinhnho-thanhhien-5825173.mp3",
-                        cover_image: "https://spotifybackend.shop/media/covers/2025/05/01/T%C3%ACnh_Nh%E1%BB%9B.jpg",
-                        play_count: 112,
-                        likes_count: 30
-                    },
-                    {
-                        id: "7",
-                        title: "Wrong Times",
-                        artist: "Puppy (Việt Nam), Dangrangto",
-                        album: "Rap Việt Collection",
-                        duration: 211,
-                        audio_file: "https://spotifybackend.shop/media/songs/2025/05/01/wrongtimes-puppyvietnamdangrangto-9475978.mp3",
-                        cover_image: "https://spotifybackend.shop/media/covers/2025/05/01/Wrong_Times.jpg",
-                        play_count: 97,
-                        likes_count: 29
-                    }
-                ]
-            };
-        }
-
         fetchPlaylistDetails()
-    }, [playlistId, user, router, toast])
+    }, [playlistId, user, router, toast, getPlaylist, isLoading])
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60)
@@ -237,7 +149,7 @@ export default function PlaylistPage() {
                 title: song.title,
                 duration: formatTime(song.duration),
                 file_url: song.audio_url || song.audio_file || '',
-                image_url: song.cover_image || playlist?.cover_image || '/placeholder-song.jpg',
+                image_url: song.cover_image || currentPlaylist?.cover_image || '/placeholder-song.jpg',
                 album: song.album ? {
                     id: 0,
                     title: song.album
@@ -259,7 +171,7 @@ export default function PlaylistPage() {
             // Hiển thị thông báo
             toast({
                 title: "Đang phát",
-                description: `Playlist: ${playlist?.name}`,
+                description: `Playlist: ${currentPlaylist?.name}`,
             })
         }
     }
@@ -272,7 +184,7 @@ export default function PlaylistPage() {
                 title: song.title,
                 duration: formatTime(song.duration),
                 file_url: song.audio_url || song.audio_file || '',
-                image_url: song.cover_image || playlist?.cover_image || '/placeholder-song.jpg',
+                image_url: song.cover_image || currentPlaylist?.cover_image || '/placeholder-song.jpg',
                 album: song.album ? {
                     id: 0,
                     title: song.album
@@ -310,7 +222,7 @@ export default function PlaylistPage() {
                 title: song.title,
                 duration: formatTime(song.duration),
                 file_url: song.audio_url || song.audio_file || '',
-                image_url: song.cover_image || playlist?.cover_image || '/placeholder-song.jpg',
+                image_url: song.cover_image || currentPlaylist?.cover_image || '/placeholder-song.jpg',
                 album: song.album ? {
                     id: 0,
                     title: song.album
@@ -332,7 +244,7 @@ export default function PlaylistPage() {
             // Hiển thị thông báo
             toast({
                 title: "Đang phát ngẫu nhiên",
-                description: `Playlist: ${playlist?.name}`,
+                description: `Playlist: ${currentPlaylist?.name}`,
             })
         }
     }
@@ -340,19 +252,29 @@ export default function PlaylistPage() {
     const handleFollowPlaylist = async () => {
         try {
             if (isFollowing) {
-                await postmanApi.music.unfollowPlaylist(playlistId)
-                setIsFollowing(false)
-                toast({
-                    title: "Đã hủy theo dõi",
-                    description: `Đã hủy theo dõi playlist "${playlist?.name}"`,
-                })
+                const success = await unfollowPlaylist(playlistId)
+
+                if (success) {
+                    setIsFollowing(false)
+                    setFollowersCount(prev => Math.max(prev - 1, 0))
+
+                    toast({
+                        title: "Đã hủy theo dõi",
+                        description: `Đã hủy theo dõi playlist "${currentPlaylist?.name}"`,
+                    })
+                }
             } else {
-                await postmanApi.music.followPlaylist(playlistId)
-                setIsFollowing(true)
-                toast({
-                    title: "Đã theo dõi",
-                    description: `Đã theo dõi playlist "${playlist?.name}"`,
-                })
+                const success = await followPlaylist(playlistId)
+
+                if (success) {
+                    setIsFollowing(true)
+                    setFollowersCount(prev => prev + 1)
+
+                    toast({
+                        title: "Đã theo dõi",
+                        description: `Đã theo dõi playlist "${currentPlaylist?.name}"`,
+                    })
+                }
             }
         } catch (error) {
             console.error("Lỗi khi thay đổi trạng thái theo dõi:", error)
@@ -379,7 +301,7 @@ export default function PlaylistPage() {
             title: song.title,
             duration: formatTime(song.duration),
             file_url: song.audio_url || song.audio_file || '',
-            image_url: song.cover_image || playlist?.cover_image || '/placeholder-song.jpg',
+            image_url: song.cover_image || currentPlaylist?.cover_image || '/placeholder-song.jpg',
             album: song.album ? {
                 id: 0,
                 title: song.album
@@ -428,19 +350,26 @@ export default function PlaylistPage() {
     };
 
     const handleRemoveSongFromPlaylist = async (song: Song) => {
-        if (!isOwner || !playlist) return;
+        if (!isOwner || !currentPlaylist) return;
 
         try {
-            // Gọi API để xóa bài hát khỏi playlist
-            await postmanApi.music.removeSongFromPlaylist(String(playlist.id), String(song.id));
+            const success = await removeSongFromPlaylist(String(currentPlaylist.id), String(song.id));
 
-            // Cập nhật UI sau khi xóa
-            setSongs(prevSongs => prevSongs.filter(s => s.id !== song.id));
+            if (success) {
+                // Cập nhật UI sau khi xóa thành công
+                setSongs(prevSongs => prevSongs.filter(s => s.id !== song.id));
 
-            toast({
-                title: "Đã xóa khỏi playlist",
-                description: `Đã xóa "${song.title}" khỏi playlist "${playlist.name}"`,
-            });
+                toast({
+                    title: "Đã xóa khỏi playlist",
+                    description: `Đã xóa "${song.title}" khỏi playlist "${currentPlaylist.name}"`,
+                });
+            } else {
+                toast({
+                    title: "Lỗi",
+                    description: "Không thể xóa bài hát khỏi playlist. Vui lòng thử lại sau.",
+                    variant: "destructive",
+                });
+            }
         } catch (error) {
             console.error("Lỗi khi xóa bài hát khỏi playlist:", error);
             toast({
@@ -451,21 +380,38 @@ export default function PlaylistPage() {
         }
     };
 
-    const handlePrivacyChange = (newStatus: boolean) => {
-        setPrivacyStatus(newStatus);
+    const handlePrivacyChange = async (newStatus: boolean) => {
+        try {
+            const updatedPlaylist = await togglePlaylistPrivacy(playlistId);
 
-        // Hiển thị thông báo
-        toast({
-            title: "Đã cập nhật",
-            description: newStatus
-                ? "Playlist của bạn đã chuyển sang chế độ công khai"
-                : "Playlist của bạn đã chuyển sang chế độ riêng tư",
-        });
+            if (updatedPlaylist) {
+                setPrivacyStatus(updatedPlaylist.is_public);
+
+                // Hiển thị thông báo
+                toast({
+                    title: "Đã cập nhật",
+                    description: updatedPlaylist.is_public
+                        ? "Playlist của bạn đã chuyển sang chế độ công khai"
+                        : "Playlist của bạn đã chuyển sang chế độ riêng tư",
+                });
+            }
+        } catch (error) {
+            console.error("Lỗi khi chuyển đổi chế độ riêng tư:", error);
+            toast({
+                title: "Lỗi",
+                description: "Không thể chuyển đổi chế độ riêng tư. Vui lòng thử lại sau.",
+                variant: "destructive",
+            });
+        }
+    }
+
+    const handleAddSongs = () => {
+        router.push(`/playlist/${playlistId}/add-songs`)
     }
 
     return (
         <div>
-            {loading ? (
+            {isLoading ? (
                 <div className="space-y-4">
                     <div className="flex gap-6">
                         <div className="w-52 h-52 bg-zinc-800/40 rounded-lg animate-pulse"></div>
@@ -489,8 +435,8 @@ export default function PlaylistPage() {
                         <div className="w-52 h-52 flex-shrink-0">
                             <div className="relative w-full h-full overflow-hidden rounded-lg shadow-lg">
                                 <Image
-                                    src={playlist?.cover_image || "/placeholder-playlist.jpg"}
-                                    alt={playlist?.name || "Playlist"}
+                                    src={currentPlaylist?.cover_image || "/placeholder-playlist.jpg"}
+                                    alt={currentPlaylist?.name || "Playlist"}
                                     fill
                                     className="object-cover"
                                 />
@@ -516,20 +462,20 @@ export default function PlaylistPage() {
                                     </div>
                                 )}
                             </div>
-                            <h1 className="text-5xl font-extrabold mb-6">{playlist?.name}</h1>
+                            <h1 className="text-5xl font-extrabold mb-6">{currentPlaylist?.name}</h1>
 
-                            {playlist?.description && (
-                                <p className="text-zinc-400 mb-3">{playlist.description}</p>
+                            {currentPlaylist?.description && (
+                                <p className="text-zinc-400 mb-3">{currentPlaylist.description}</p>
                             )}
 
                             <div className="flex items-center gap-1 text-sm text-zinc-400">
                                 <span className="font-medium text-white">
-                                    {playlist?.user?.username || "Unknown User"}
+                                    {currentPlaylist?.user?.username || "Unknown User"}
                                 </span>
                                 <span>•</span>
                                 <span>{songs.length} bài hát</span>
                                 <span>•</span>
-                                <span>Tạo ngày {playlist?.created_at ? formatDate(playlist.created_at) : "Unknown"}</span>
+                                <span>Tạo ngày {currentPlaylist?.created_at ? formatDate(currentPlaylist.created_at) : "Unknown"}</span>
                                 <span>•</span>
                                 <PlaylistFollowersModal
                                     playlistId={playlistId}
@@ -552,10 +498,17 @@ export default function PlaylistPage() {
                         <Button
                             onClick={handleShufflePlay}
                             variant="outline"
-                            size="icon"
-                            className="h-10 w-10"
+                            className="gap-2"
                         >
                             <ShuffleIcon className="h-5 w-5" />
+                        </Button>
+
+                        <Button
+                            onClick={handleAddSongs}
+                            variant="outline"
+                            className="gap-2"
+                        >
+                            <Plus className="h-4 w-4" /> Thêm bài hát
                         </Button>
 
                         {isOwner ? (
@@ -580,8 +533,8 @@ export default function PlaylistPage() {
 
                         <PlaylistSharingComponent
                             playlistId={playlistId}
-                            playlistName={playlist?.name || "Playlist"}
-                            playlistCover={playlist?.cover_image || undefined}
+                            playlistName={currentPlaylist?.name || "Playlist"}
+                            playlistCover={currentPlaylist?.cover_image || undefined}
                         />
 
                         <DropdownMenu>
@@ -601,6 +554,14 @@ export default function PlaylistPage() {
                                             <Pencil className="h-4 w-4 mr-2" /> Sửa playlist
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
+                                        <DropdownMenuItem asChild>
+                                            <DeletePlaylistButton
+                                                playlistId={playlistId}
+                                                playlistName={currentPlaylist?.name || "Playlist"}
+                                                variant="ghost"
+                                                className="w-full justify-start px-2 text-red-500 cursor-pointer hover:bg-transparent hover:text-red-600"
+                                            />
+                                        </DropdownMenuItem>
                                     </>
                                 ) : (
                                     <DropdownMenuItem onClick={handleFollowPlaylist}>
@@ -746,14 +707,12 @@ export default function PlaylistPage() {
                     ) : (
                         <div className="text-center py-12 bg-zinc-900/30 rounded-lg">
                             <p className="text-zinc-400 mb-4">Playlist này chưa có bài hát nào</p>
-                            {isOwner && (
-                                <Button
-                                    onClick={() => router.push("/songs")}
-                                    className="bg-green-500 hover:bg-green-600 text-black"
-                                >
-                                    Thêm bài hát
-                                </Button>
-                            )}
+                            <Button
+                                onClick={() => router.push("/songs")}
+                                className="bg-green-500 hover:bg-green-600 text-black"
+                            >
+                                Thêm bài hát
+                            </Button>
                         </div>
                     )}
                 </>

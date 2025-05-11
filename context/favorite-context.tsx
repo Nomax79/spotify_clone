@@ -39,18 +39,31 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
         if (!isAuthenticated) return null
 
         try {
-            const response = await fetch('/api/v1/music/library/', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('spotify_token')}`
-                }
-            })
+            // Sử dụng postmanApi thay vì gọi fetch trực tiếp
+            const response = await postmanApi.music.getLibrary();
 
-            if (!response.ok) {
-                throw new Error('Không thể lấy thư viện người dùng')
+            // Xử lý dữ liệu trả về đảm bảo là mảng
+            if (!response) {
+                console.error('Dữ liệu trả về từ API là null hoặc undefined');
+                return [];
             }
 
-            const data = await response.json()
-            return data
+            // Đảm bảo dữ liệu trả về là một mảng
+            if (Array.isArray(response)) {
+                return response;
+            } else if (response && typeof response === 'object') {
+                // Nếu response là object, thử trích xuất mảng
+                if (Array.isArray(response.songs)) {
+                    return response.songs;
+                } else if (Array.isArray(response.items)) {
+                    return response.items;
+                } else if (Array.isArray(response.results)) {
+                    return response.results;
+                }
+            }
+
+            console.error('Dữ liệu trả về không phải là mảng:', response);
+            return [];
         } catch (error) {
             console.error('Lỗi khi lấy thư viện người dùng:', error)
             toast({
@@ -58,7 +71,7 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
                 description: "Không thể lấy thư viện người dùng. Vui lòng thử lại sau.",
                 variant: "destructive",
             })
-            return null
+            return []
         }
     }, [isAuthenticated])
 
@@ -77,18 +90,31 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
     const fetchFavorites = useCallback(async () => {
         try {
             setIsLoading(true)
-            const response = await fetch('/api/v1/music/favorites/', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('spotify_token')}`
-                }
-            })
+            // Sử dụng postmanApi thay vì gọi fetch trực tiếp
+            const response = await postmanApi.music.getLibrary();
 
-            if (!response.ok) {
-                throw new Error('Không thể lấy danh sách bài hát yêu thích')
+            // Kiểm tra dữ liệu trả về
+            if (!response) {
+                console.error('Dữ liệu trả về từ API là null hoặc undefined');
+                return [];
             }
 
-            const data = await response.json()
-            return data
+            // Đảm bảo dữ liệu trả về là một mảng
+            if (Array.isArray(response)) {
+                return response;
+            } else if (response && typeof response === 'object') {
+                // Nếu response là object, thử trích xuất mảng
+                if (Array.isArray(response.songs)) {
+                    return response.songs;
+                } else if (Array.isArray(response.items)) {
+                    return response.items;
+                } else if (Array.isArray(response.results)) {
+                    return response.results;
+                }
+            }
+
+            console.error('Dữ liệu trả về không phải là mảng:', response);
+            return [];
         } catch (error) {
             console.error('Lỗi khi lấy danh sách bài hát yêu thích:', error)
             return []
@@ -135,7 +161,11 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
 
     // Kiểm tra xem bài hát có trong danh sách yêu thích không
     const isFavorite = useCallback((songId: string | number) => {
-        return favoriteSongs.some(song => song.id.toString() === songId.toString())
+        if (!Array.isArray(favoriteSongs)) {
+            console.error('favoriteSongs không phải là mảng:', favoriteSongs);
+            return false;
+        }
+        return favoriteSongs.some(song => song && song.id && song.id.toString() === songId.toString());
     }, [favoriteSongs])
 
     // Thêm bài hát vào danh sách yêu thích
@@ -163,7 +193,8 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
             await postmanApi.music.addToFavorites(song.id.toString())
 
             // Cập nhật state và cache
-            const updatedFavorites = [...favoriteSongs, song]
+            const currentFavorites = Array.isArray(favoriteSongs) ? favoriteSongs : [];
+            const updatedFavorites = [...currentFavorites, song];
             setFavoriteSongs(updatedFavorites)
             localStorage.setItem('favoriteSongs', JSON.stringify(updatedFavorites))
 
@@ -202,6 +233,13 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
             await postmanApi.music.removeFromFavorites(song.id.toString())
 
             // Cập nhật state và cache
+            if (!Array.isArray(favoriteSongs)) {
+                console.error('favoriteSongs không phải là mảng:', favoriteSongs);
+                setFavoriteSongs([]);
+                localStorage.removeItem('favoriteSongs');
+                return true;
+            }
+
             const updatedFavorites = favoriteSongs.filter(s => s.id !== song.id)
             setFavoriteSongs(updatedFavorites)
             localStorage.setItem('favoriteSongs', JSON.stringify(updatedFavorites))
@@ -249,18 +287,21 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
             const response = await postmanApi.music.likeSong(song.id.toString())
             const result = response.status === "liked"
 
+            // Kiểm tra và đảm bảo favoriteSongs là mảng
+            const currentFavorites = Array.isArray(favoriteSongs) ? favoriteSongs : [];
+
             // Cập nhật state và cache dựa trên kết quả từ API
             let updatedFavorites
             if (result) {
                 // Đã thêm vào yêu thích
-                updatedFavorites = [...favoriteSongs, song]
+                updatedFavorites = [...currentFavorites, song]
                 toast({
                     title: "Đã thêm vào yêu thích",
                     description: `Bài hát "${song.title}" đã được thêm vào danh sách yêu thích.`,
                 })
             } else {
                 // Đã xóa khỏi yêu thích
-                updatedFavorites = favoriteSongs.filter(s => s.id !== song.id)
+                updatedFavorites = currentFavorites.filter(s => s && s.id && s.id !== song.id)
                 toast({
                     title: "Đã xóa khỏi yêu thích",
                     description: `Bài hát "${song.title}" đã được xóa khỏi danh sách yêu thích.`,

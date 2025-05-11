@@ -33,18 +33,25 @@ export default function FavoritesPage() {
     useEffect(() => {
         // Làm mới danh sách yêu thích khi trang được tải
         if (isAuthenticated) {
-            refreshFavorites()
+            refreshFavorites().catch(error => {
+                console.error("Lỗi khi làm mới danh sách yêu thích:", error);
+                toast({
+                    title: "Lỗi",
+                    description: "Không thể tải danh sách bài hát yêu thích. Vui lòng thử lại sau.",
+                    variant: "destructive",
+                });
+            });
         }
-    }, [isAuthenticated, refreshFavorites])
+    }, [isAuthenticated, refreshFavorites, toast])
 
     const handlePlayAll = () => {
-        if (favoriteSongs.length > 0) {
+        if (Array.isArray(favoriteSongs) && favoriteSongs.length > 0) {
             play(favoriteSongs[0], favoriteSongs)
         }
     }
 
     const handlePlayShuffle = () => {
-        if (favoriteSongs.length > 0) {
+        if (Array.isArray(favoriteSongs) && favoriteSongs.length > 0) {
             // Sắp xếp ngẫu nhiên danh sách
             const shuffled = [...favoriteSongs].sort(() => Math.random() - 0.5)
             play(shuffled[0], shuffled)
@@ -56,6 +63,14 @@ export default function FavoritesPage() {
         if (currentSong?.id === song.id && isPlaying) {
             togglePlay()
             return
+        }
+
+        // Kiểm tra nếu favoriteSongs là mảng
+        if (!Array.isArray(favoriteSongs)) {
+            console.error('favoriteSongs không phải là mảng:', favoriteSongs);
+            // Phát bài hát đơn lẻ
+            play(song, [song]);
+            return;
         }
 
         // Tạo danh sách phát từ vị trí bài hát được chọn
@@ -113,7 +128,7 @@ export default function FavoritesPage() {
                     <p className="text-sm font-medium uppercase text-zinc-400 mb-2">Danh sách phát</p>
                     <h1 className="text-3xl font-bold mb-2">Bài hát yêu thích của bạn</h1>
                     <p className="text-zinc-400 mb-6">
-                        {user?.name || user?.username} • {favoriteSongs.length} bài hát
+                        {user?.name || user?.username} • {Array.isArray(favoriteSongs) ? favoriteSongs.length : 0} bài hát
                     </p>
                     <div className="flex gap-4">
                         <Button

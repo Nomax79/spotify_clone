@@ -120,6 +120,10 @@ export interface MusicCollection {
   checkFollowingPlaylist(playlistId: string): Promise<{ following: boolean }>;
   getPlaylistFollowers(playlistId: string): Promise<any>;
   togglePlaylistPrivacy(playlistId: string): Promise<PlaylistData>;
+  updateCoverImage(
+    playlistId: string,
+    data: FormData | { song_id: string }
+  ): Promise<Partial<PlaylistData>>;
   sharePlaylist(
     playlistId: string,
     receiverId: string,
