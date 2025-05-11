@@ -380,7 +380,7 @@ const ChatWindow = ({ onToggleSidebar, isMobileSidebarOpen, onRefresh }: ChatWin
                             <MessageItem
                                 key={msg.id}
                                 message={msg}
-                                isCurrentUser={msg.sender.id === user?.id}
+                                isCurrentUser={String(msg.sender?.id || msg.sender) === String(user?.id)}
                             />
                         ))
                 ) : (

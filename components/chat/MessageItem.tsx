@@ -201,12 +201,13 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
     }
 
     return (
-        <div className={`flex mb-4 ${isCurrentUser ? 'justify-start' : 'justify-end'}`}>
-            <div className={`max-w-[80%] flex ${isCurrentUser ? 'flex-row' : 'flex-row-reverse'} items-end`}>
+        <div className={`flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] flex ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'} items-end`}>
+
                 {/* Avatar */}
                 <div className={cn(
                     "relative h-8 w-8 rounded-full overflow-hidden flex-shrink-0",
-                    isCurrentUser ? "mr-2 mt-1" : "ml-2 mt-1"
+                    isCurrentUser ? "ml-2 mt-1" : "mr-2 mt-1"
                 )}>
                     {message.sender?.avatar ? (
                         <Image

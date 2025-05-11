@@ -14,7 +14,7 @@ type ChatContextType = {
     searchResults: User[]
     searchTerm: string
     isSearching: boolean
-    sendMessage: (receiverId: string, content: string) => Promise<Message>
+    sendMessage: (receiverId: string, content: string) => Promise<void>
     shareSong: (songId: string, receiverId: string, content: string) => Promise<Message>
     sharePlaylist: (playlistId: string, receiverId: string, content: string) => Promise<Message>
     searchUsers: (term: string) => Promise<void>
@@ -396,87 +396,29 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }, [user, activeChat, accessToken])
 
     // Gửi tin nhắn văn bản
-    const sendMessage = useCallback(async (receiverId: string, content: string): Promise<Message> => {
+    const sendMessage = useCallback(async (receiverId: string, content: string): Promise<void> => {
         if (!user || !accessToken) {
             throw new Error("Bạn cần đăng nhập để gửi tin nhắn")
         }
 
-        try {
-            let targetChatRoom = activeChat
-
-            // Nếu không có active chat hoặc active chat không phải với receiver hiện tại
-            if (!targetChatRoom || targetChatRoom.partner.id !== receiverId) {
-                // Tìm xem đã có chat room với receiver chưa
-                const existingRoom = chatRooms.find(r => r.partner.id === receiverId)
-
-                if (existingRoom) {
-                    // Nếu đã có, sử dụng chat room đó
-                    targetChatRoom = existingRoom
-                    setActiveChat(existingRoom)
-                } else {
-                    // Nếu chưa có, tạo conversation mới
-                    try {
-                        targetChatRoom = await startNewConversation(receiverId)
-                    } catch (error) {
-                        console.error("Lỗi khi tạo cuộc trò chuyện mới:", error)
-                        throw new Error("Không thể bắt đầu cuộc trò chuyện")
-                    }
-                }
-            }
-
-            // Gửi tin nhắn qua REST API
-            const newMessage = await api.chat.sendMessage(receiverId, content)
-
-            // Cập nhật danh sách tin nhắn hiện tại
-            setMessages(prev => [...prev, newMessage])
-
-            // Gửi tin nhắn qua WebSocket nếu đã kết nối
-            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-                socketRef.current.send(JSON.stringify({
-                    message: content,
-                    message_type: "TEXT"
-                }));
-            }
-
-            // Cập nhật chat rooms
-            setChatRooms(prev => {
-                const updatedRooms = [...prev]
-                const roomIndex = updatedRooms.findIndex(room => room.id === targetChatRoom!.id)
-
-                if (roomIndex >= 0) {
-                    // Cập nhật phòng hiện có
-                    updatedRooms[roomIndex] = {
-                        ...updatedRooms[roomIndex],
-                        lastMessage: newMessage
-                    }
-
-                    // Di chuyển lên đầu
-                    const updatedRoom = updatedRooms.splice(roomIndex, 1)[0]
-                    updatedRooms.unshift(updatedRoom)
-                } else {
-                    // Tạo phòng mới với đúng conversation.id
-                    updatedRooms.unshift({
-                        id: targetChatRoom!.id,
-                        partner: newMessage.receiver.id === user.id ? newMessage.sender : newMessage.receiver,
-                        lastMessage: newMessage,
-                        unreadCount: 0
-                    })
-                }
-
-                return updatedRooms
-            })
-
-            return newMessage
-        } catch (error) {
-            console.error("Lỗi khi gửi tin nhắn:", error)
+        // Kiểm tra WebSocket
+        if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
             toast({
-                title: "Lỗi",
-                description: "Không thể gửi tin nhắn. Vui lòng thử lại sau.",
+                title: "Lỗi kết nối",
+                description: "Không thể gửi tin nhắn. WebSocket chưa sẵn sàng.",
                 variant: "destructive"
             })
-            throw error
+            return
         }
-    }, [user, accessToken, activeChat, chatRooms, startNewConversation])
+
+        // Gửi qua WebSocket
+        socketRef.current.send(JSON.stringify({
+            message: content,
+            message_type: "TEXT"
+        }))
+
+        // Không cần xử lý newMessage ở đây nữa, vì sẽ nhận lại tin nhắn từ server qua socket.onmessage
+    }, [user, accessToken])
 
     // Chia sẻ bài hát
     const shareSong = useCallback(async (songId: string, receiverId: string, content: string): Promise<Message> => {
