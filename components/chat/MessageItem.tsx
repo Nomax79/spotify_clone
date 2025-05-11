@@ -71,7 +71,7 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                 return (
                     <div className="mt-2">
                         <p className="mb-2 whitespace-pre-wrap break-words">{message.content || ''}</p>
-                        <div className="bg-background/80 rounded-lg p-3 flex items-center space-x-3 border border-muted-foreground/20">
+                        <div className={`rounded-lg p-3 flex items-center space-x-3 border ${isCurrentUser ? 'bg-blue-600/50 border-blue-700' : 'bg-gray-300 border-gray-400'}`}>
                             {message.shared_song.cover_image && (
                                 <div className="relative h-12 w-12 rounded overflow-hidden flex-shrink-0">
                                     <Image
@@ -83,11 +83,15 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
-                                <h4 className="font-medium truncate">{message.shared_song.title || 'Unknown Song'}</h4>
-                                <p className="text-sm text-muted-foreground truncate">{message.shared_song.artist || 'Unknown Artist'}</p>
+                                <h4 className={`font-medium truncate ${isCurrentUser ? 'text-white' : 'text-gray-800'}`}>
+                                    {message.shared_song.title || 'Unknown Song'}
+                                </h4>
+                                <p className={`text-sm truncate ${isCurrentUser ? 'text-blue-100' : 'text-gray-600'}`}>
+                                    {message.shared_song.artist || 'Unknown Artist'}
+                                </p>
                             </div>
                             <button
-                                className="bg-primary text-primary-foreground rounded-full p-2 flex-shrink-0"
+                                className={`rounded-full p-2 flex-shrink-0 ${isCurrentUser ? 'bg-white text-blue-500' : 'bg-blue-500 text-white'}`}
                             >
                                 <PlayIcon className="h-4 w-4" />
                             </button>
@@ -100,7 +104,7 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                 return (
                     <div className="mt-2">
                         <p className="mb-2 whitespace-pre-wrap break-words">{message.content || ''}</p>
-                        <div className="bg-background/80 rounded-lg p-3 flex items-center space-x-3 border border-muted-foreground/20">
+                        <div className={`rounded-lg p-3 flex items-center space-x-3 border ${isCurrentUser ? 'bg-blue-600/50 border-blue-700' : 'bg-gray-300 border-gray-400'}`}>
                             {message.shared_playlist.cover_image && (
                                 <div className="relative h-12 w-12 rounded overflow-hidden flex-shrink-0">
                                     <Image
@@ -112,13 +116,15 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
-                                <h4 className="font-medium truncate">{message.shared_playlist.title || 'Unknown Playlist'}</h4>
-                                <p className="text-sm text-muted-foreground truncate">
+                                <h4 className={`font-medium truncate ${isCurrentUser ? 'text-white' : 'text-gray-800'}`}>
+                                    {message.shared_playlist.title || 'Unknown Playlist'}
+                                </h4>
+                                <p className={`text-sm truncate ${isCurrentUser ? 'text-blue-100' : 'text-gray-600'}`}>
                                     {(message.shared_playlist.songs?.length || 0)} bài hát
                                 </p>
                             </div>
                             <button
-                                className="bg-primary text-primary-foreground rounded-full p-2 flex-shrink-0"
+                                className={`rounded-full p-2 flex-shrink-0 ${isCurrentUser ? 'bg-white text-blue-500' : 'bg-blue-500 text-white'}`}
                             >
                                 <PlayIcon className="h-4 w-4" />
                             </button>
@@ -150,14 +156,16 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                 return (
                     <div className="mt-2">
                         <p className="mb-2 whitespace-pre-wrap break-words">{message.content || ''}</p>
-                        <div className="bg-background/80 rounded-lg p-3 flex items-center space-x-3 border border-muted-foreground/20">
+                        <div className={`rounded-lg p-3 flex items-center space-x-3 border ${isCurrentUser ? 'bg-blue-600/50 border-blue-700' : 'bg-gray-300 border-gray-400'}`}>
                             <div className="flex-1 min-w-0">
-                                <h4 className="font-medium truncate">Tệp đính kèm</h4>
+                                <h4 className={`font-medium truncate ${isCurrentUser ? 'text-white' : 'text-gray-800'}`}>
+                                    Tệp đính kèm
+                                </h4>
                                 <a
                                     href={message.attachment}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-sm text-primary truncate hover:underline"
+                                    className={`text-sm truncate hover:underline ${isCurrentUser ? 'text-blue-100' : 'text-blue-600'}`}
                                 >
                                     Tải xuống
                                 </a>
@@ -171,15 +179,17 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                 return (
                     <div className="mt-2">
                         {message.content && <p className="mb-2 whitespace-pre-wrap break-words">{message.content}</p>}
-                        <div className="bg-background/80 rounded-lg p-3 flex items-center space-x-3 border border-muted-foreground/20">
+                        <div className={`rounded-lg p-3 flex items-center space-x-3 border ${isCurrentUser ? 'bg-blue-600/50 border-blue-700' : 'bg-gray-300 border-gray-400'}`}>
                             <button
-                                className={`${isPlaying ? 'bg-red-500' : 'bg-primary'} text-primary-foreground rounded-full p-2 flex-shrink-0`}
+                                className={`rounded-full p-2 flex-shrink-0 ${isPlaying ? 'bg-red-500 text-white' : isCurrentUser ? 'bg-white text-blue-500' : 'bg-blue-500 text-white'}`}
                                 onClick={handlePlayVoiceNote}
                             >
                                 {isPlaying ? <XCircle className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                             </button>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm text-muted-foreground">Tin nhắn thoại</p>
+                                <p className={`text-sm ${isCurrentUser ? 'text-white' : 'text-gray-800'}`}>
+                                    Tin nhắn thoại
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -191,12 +201,12 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
     }
 
     return (
-        <div className={`flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] flex ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'} items-end`}>
+        <div className={`flex mb-4 ${isCurrentUser ? 'justify-start' : 'justify-end'}`}>
+            <div className={`max-w-[80%] flex ${isCurrentUser ? 'flex-row' : 'flex-row-reverse'} items-end`}>
                 {/* Avatar */}
                 <div className={cn(
                     "relative h-8 w-8 rounded-full overflow-hidden flex-shrink-0",
-                    isCurrentUser ? "ml-2 mt-1" : "mr-2 mt-1"
+                    isCurrentUser ? "mr-2 mt-1" : "ml-2 mt-1"
                 )}>
                     {message.sender?.avatar ? (
                         <Image
@@ -220,21 +230,21 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                         className={cn(
                             "py-2 px-3 rounded-2xl relative group",
                             isCurrentUser
-                                ? "bg-[#4CBB17] text-primary-foreground rounded-br-none"
-                                : "bg-[#2A2A2A] text-foreground rounded-bl-none"
+                                ? "bg-blue-500 text-white rounded-bl-none"
+                                : "bg-gray-200 text-gray-800 rounded-br-none"
                         )}
                     >
                         {renderMessageContent()}
 
                         {/* Dropdown menu cho các tùy chọn của tin nhắn */}
-                        <div className={`absolute ${isCurrentUser ? 'left-0' : 'right-0'} top-1/2 transform ${isCurrentUser ? '-translate-x-full -translate-y-1/2 -ml-1' : 'translate-x-full -translate-y-1/2 -mr-1'} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                        <div className={`absolute ${isCurrentUser ? 'right-0' : 'left-0'} top-1/2 transform ${isCurrentUser ? 'translate-x-full -translate-y-1/2 -mr-1' : '-translate-x-full -translate-y-1/2 -ml-1'} opacity-0 group-hover:opacity-100 transition-opacity`}>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <button className="p-1 bg-background rounded-full shadow-sm">
                                         <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                     </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align={isCurrentUser ? "end" : "start"} className="w-40">
+                                <DropdownMenuContent align={isCurrentUser ? "start" : "end"} className="w-40">
                                     {isCurrentUser && (
                                         <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
                                             <Trash2 className="mr-2 h-4 w-4" />
@@ -245,11 +255,11 @@ const MessageItem = ({ message, isCurrentUser }: MessageItemProps) => {
                             </DropdownMenu>
                         </div>
                     </div>
-                    <div className={`flex items-center text-xs text-muted-foreground mt-1 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex items-center text-xs text-muted-foreground mt-1 ${isCurrentUser ? 'justify-start' : 'justify-end'}`}>
                         <span className="mr-1">{formattedTime}</span>
                         {isCurrentUser && (
                             <CheckCircle2
-                                className={`h-3 w-3 ml-1 ${message.is_read === true ? 'text-primary' : 'text-muted-foreground/50'}`}
+                                className={`h-3 w-3 ml-1 ${message.is_read === true ? 'text-blue-500' : 'text-gray-400'}`}
                                 fill={message.is_read === true ? 'currentColor' : 'none'}
                             />
                         )}

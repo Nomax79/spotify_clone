@@ -12,7 +12,8 @@ import {
     Music,
     Image as ImageIcon,
     Check,
-    X
+    X,
+    RefreshCw
 } from "lucide-react"
 import { useChat } from "@/context/chat-context"
 import { useAuth } from "@/context/auth-context"
@@ -38,10 +39,11 @@ import { api } from "@/lib/api"
 interface ChatWindowProps {
     onToggleSidebar: () => void
     isMobileSidebarOpen: boolean
+    onRefresh?: () => void
 }
 
-const ChatWindow = ({ onToggleSidebar, isMobileSidebarOpen }: ChatWindowProps) => {
-    const { activeChat, messages, sendMessage, isConnected, shareSong, sharePlaylist, setMessages } = useChat()
+const ChatWindow = ({ onToggleSidebar, isMobileSidebarOpen, onRefresh }: ChatWindowProps) => {
+    const { activeChat, messages, sendMessage, isConnected, shareSong, sharePlaylist, setMessages, fetchMessageHistory, isLoading } = useChat()
     const { user } = useAuth()
     const [messageText, setMessageText] = useState("")
     const [isSending, setIsSending] = useState(false)
@@ -65,6 +67,19 @@ const ChatWindow = ({ onToggleSidebar, isMobileSidebarOpen }: ChatWindowProps) =
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
         }
     }, [messages])
+
+    // Xử lý và gỡ lỗi tin nhắn
+    useEffect(() => {
+        if (messages && messages.length > 0) {
+            console.log("Số lượng tin nhắn:", messages.length);
+
+            // Kiểm tra xem tin nhắn có đúng định dạng không
+            const invalidMessages = messages.filter(msg => !msg || !msg.sender || !msg.id);
+            if (invalidMessages.length > 0) {
+                console.warn("Phát hiện tin nhắn không hợp lệ:", invalidMessages);
+            }
+        }
+    }, [messages]);
 
     // Xử lý kết thúc ghi âm khi component unmount
     useEffect(() => {
@@ -297,55 +312,70 @@ const ChatWindow = ({ onToggleSidebar, isMobileSidebarOpen }: ChatWindowProps) =
     return (
         <div className="h-full flex flex-col">
             {/* Header */}
-            <div className="px-4 py-3 border-b border-muted-foreground/10 flex items-center">
-                <button
-                    className="md:hidden p-2 -ml-2 mr-2 rounded-full hover:bg-muted/80"
-                    onClick={onToggleSidebar}
-                >
-                    <ChevronLeft className="h-5 w-5" />
-                </button>
+            <div className="px-4 py-3 border-b border-muted-foreground/10 flex items-center justify-between">
+                <div className="flex items-center">
+                    <button
+                        className="md:hidden p-2 -ml-2 mr-2 rounded-full hover:bg-muted/80"
+                        onClick={onToggleSidebar}
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </button>
 
-                <div className="flex items-center space-x-3">
-                    <div className="relative h-10 w-10 rounded-full overflow-hidden">
-                        {activeChat.partner.avatar ? (
-                            <Image
-                                src={activeChat.partner.avatar}
-                                alt={activeChat.partner.username}
-                                fill
-                                className="object-cover"
-                            />
-                        ) : (
-                            <div className="h-full w-full bg-primary/20 flex items-center justify-center rounded-full">
-                                <span className="text-lg font-semibold">
-                                    {activeChat.partner.username.charAt(0).toUpperCase()}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                    <div>
-                        <h3 className="font-semibold">{activeChat.partner.username}</h3>
-                        <p className="text-xs text-muted-foreground flex items-center">
-                            {isConnected ? (
-                                <>
-                                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-                                    Đang hoạt động
-                                </>
+                    <div className="flex items-center space-x-3">
+                        <div className="relative h-10 w-10 rounded-full overflow-hidden">
+                            {activeChat.partner.avatar ? (
+                                <Image
+                                    src={activeChat.partner.avatar}
+                                    alt={activeChat.partner.username}
+                                    fill
+                                    className="object-cover"
+                                />
                             ) : (
-                                <>
-                                    <span className="inline-block w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
-                                    Ngoại tuyến
-                                </>
+                                <div className="h-full w-full bg-primary/20 flex items-center justify-center rounded-full">
+                                    <span className="text-lg font-semibold">
+                                        {activeChat.partner.username.charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
                             )}
-                        </p>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold">{activeChat.partner.username}</h3>
+                            <p className="text-xs text-muted-foreground flex items-center">
+                                {isConnected ? (
+                                    <>
+                                        <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                        Đang hoạt động
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="inline-block w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
+                                        Ngoại tuyến
+                                    </>
+                                )}
+                            </p>
+                        </div>
                     </div>
                 </div>
+
+                {/* Nút refresh */}
+                <button
+                    onClick={onRefresh}
+                    className="p-2 rounded-full hover:bg-muted/80"
+                    title="Tải lại tin nhắn"
+                >
+                    <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin text-primary' : 'text-muted-foreground'}`} />
+                </button>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length > 0 ? (
+                {isLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                        <span className="loading loading-spinner loading-md"></span>
+                    </div>
+                ) : messages && messages.length > 0 ? (
                     messages
-                        ?.filter((msg) => msg && msg.sender?.id && msg?.id)
+                        .filter((msg) => msg && msg.sender && msg.id)
                         .map((msg) => (
                             <MessageItem
                                 key={msg.id}

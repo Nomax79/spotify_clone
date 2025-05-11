@@ -2,13 +2,39 @@
 
 import { useState } from "react"
 import { useChat } from "@/context/chat-context"
+import { useAuth } from "@/context/auth-context"
 import ChatSidebar from "./ChatSidebar"
 import ChatWindow from "./ChatWindow"
 import EmptyState from "./EmptyState"
 
 const ChatLayout = () => {
-    const { activeChat, chatRooms, setActiveChat } = useChat()
+    const { activeChat, chatRooms, setActiveChat, fetchMessageHistory, markMessagesAsRead } = useChat()
+    const { user } = useAuth()
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+    // Xử lý chọn cuộc trò chuyện
+    const handleSelectChat = async (chat) => {
+        setActiveChat(chat)
+        setIsMobileSidebarOpen(false)
+
+        // Đánh dấu tin nhắn đã đọc
+        if (chat.unreadCount > 0) {
+            markMessagesAsRead(chat.id)
+        }
+
+        // Lấy lịch sử tin nhắn nếu user đã đăng nhập
+        if (user && chat.partner) {
+            fetchMessageHistory(user.id, chat.partner.id)
+        }
+    }
+
+    // Xử lý refresh tin nhắn
+    const handleRefresh = () => {
+        if (activeChat && user) {
+            console.log("Đang tải lại tin nhắn...");
+            fetchMessageHistory(user.id, activeChat.partner.id);
+        }
+    }
 
     return (
         <div className="flex h-full overflow-hidden">
@@ -19,10 +45,7 @@ const ChatLayout = () => {
             >
                 <ChatSidebar
                     chatRooms={chatRooms}
-                    onSelectChat={(chat) => {
-                        setActiveChat(chat)
-                        setIsMobileSidebarOpen(false)
-                    }}
+                    onSelectChat={handleSelectChat}
                     activeChat={activeChat}
                 />
             </div>
@@ -33,6 +56,7 @@ const ChatLayout = () => {
                     <ChatWindow
                         onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
                         isMobileSidebarOpen={isMobileSidebarOpen}
+                        onRefresh={handleRefresh}
                     />
                 ) : (
                     <EmptyState onOpenSidebar={() => setIsMobileSidebarOpen(true)} />

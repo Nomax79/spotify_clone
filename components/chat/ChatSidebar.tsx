@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Search, UserPlus, Loader2 } from "lucide-react"
 import { ChatRoom, User } from "@/types"
 import { useChat } from "@/context/chat-context"
+import { useAuth } from "@/context/auth-context"
 
 interface ChatSidebarProps {
     chatRooms: ChatRoom[]
@@ -13,7 +14,8 @@ interface ChatSidebarProps {
 }
 
 const ChatSidebar = ({ chatRooms, onSelectChat, activeChat }: ChatSidebarProps) => {
-    const { searchUsers, searchResults, searchTerm, isSearching, startNewConversation } = useChat()
+    const { user } = useAuth()
+    const { searchUsers, searchResults, searchTerm, isSearching, startNewConversation, fetchMessageHistory, markMessagesAsRead } = useChat()
     const [localSearchTerm, setLocalSearchTerm] = useState("")
     const [isCreatingChat, setIsCreatingChat] = useState(false)
     const [showSearchResults, setShowSearchResults] = useState(false)
@@ -37,12 +39,27 @@ const ChatSidebar = ({ chatRooms, onSelectChat, activeChat }: ChatSidebarProps) 
         room.partner.username.toLowerCase().includes(localSearchTerm.toLowerCase())
     )
 
+    // Xử lý chọn cuộc trò chuyện
+    const handleSelectChat = async (chat: ChatRoom) => {
+        onSelectChat(chat)
+
+        // Đánh dấu tin nhắn đã đọc
+        if (chat.unreadCount > 0) {
+            markMessagesAsRead(chat.id)
+        }
+
+        // Lấy lịch sử tin nhắn nếu user đã đăng nhập
+        if (user && chat.partner) {
+            fetchMessageHistory(user.id, chat.partner.id)
+        }
+    }
+
     // Xử lý bắt đầu cuộc trò chuyện với người dùng từ kết quả tìm kiếm
     const handleStartChat = async (user: User) => {
         setIsCreatingChat(true)
         try {
             const newChat = await startNewConversation(user.id)
-            onSelectChat(newChat)
+            handleSelectChat(newChat)
             setLocalSearchTerm("")
             setShowSearchResults(false)
         } catch (error) {
@@ -158,7 +175,7 @@ const ChatSidebar = ({ chatRooms, onSelectChat, activeChat }: ChatSidebarProps) 
                                 key={room.id}
                                 className={`p-4 hover:bg-muted/50 cursor-pointer flex items-center space-x-3 transition-colors ${activeChat?.id === room.id ? 'bg-muted/80' : ''
                                     }`}
-                                onClick={() => onSelectChat(room)}
+                                onClick={() => handleSelectChat(room)}
                             >
                                 {/* Avatar */}
                                 <div className="relative h-12 w-12 rounded-full overflow-hidden">

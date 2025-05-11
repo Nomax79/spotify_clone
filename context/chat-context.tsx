@@ -24,6 +24,7 @@ type ChatContextType = {
     isConnected: boolean
     markMessagesAsRead: (conversationId: string) => Promise<void>
     deleteMessage: (messageId: number) => Promise<void>
+    fetchMessageHistory: (user1Id: string, user2Id: string) => Promise<Message[]>
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
@@ -146,6 +147,36 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 description: "Không thể xóa tin nhắn. Vui lòng thử lại sau.",
                 variant: "destructive"
             })
+        }
+    }, [])
+
+    // Lấy lịch sử tin nhắn
+    const fetchMessageHistory = useCallback(async (user1Id: string, user2Id: string) => {
+        try {
+            setIsLoading(true)
+            console.log("Đang lấy lịch sử tin nhắn giữa", user1Id, "và", user2Id)
+            const messages = await api.chat.getMessageHistory(user1Id, user2Id)
+            console.log("Lịch sử tin nhắn nhận được:", messages)
+
+            if (Array.isArray(messages)) {
+                setMessages(messages)
+            } else {
+                console.error("Dữ liệu tin nhắn không phải mảng:", messages)
+                setMessages([])
+            }
+
+            return messages
+        } catch (error) {
+            console.error("Lỗi khi lấy lịch sử tin nhắn:", error)
+            toast({
+                title: "Lỗi",
+                description: "Không thể lấy lịch sử tin nhắn. Vui lòng thử lại sau.",
+                variant: "destructive"
+            })
+            setMessages([])
+            return []
+        } finally {
+            setIsLoading(false)
         }
     }, [])
 
@@ -611,7 +642,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             setMessages,
             isConnected,
             markMessagesAsRead,
-            deleteMessage
+            deleteMessage,
+            fetchMessageHistory
         }}>
             {children}
         </ChatContext.Provider>

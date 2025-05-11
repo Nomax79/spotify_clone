@@ -53,6 +53,43 @@ export class ChatService extends BaseService {
   }
 
   /**
+   * Lấy lịch sử tin nhắn giữa hai người dùng
+   */
+  async getMessageHistory(
+    user1Id: string,
+    user2Id: string
+  ): Promise<Message[]> {
+    console.log(
+      `Gọi API lịch sử tin nhắn với user1=${user1Id}, user2=${user2Id}`
+    );
+    try {
+      const response = await this.get(
+        `/api/chat/messages/history/?user1=${user1Id}&user2=${user2Id}`
+      );
+      console.log("Phản hồi API lịch sử tin nhắn:", response);
+
+      // Đảm bảo luôn trả về mảng
+      if (Array.isArray(response)) {
+        return response as Message[];
+      } else if (response && typeof response === "object") {
+        // Nếu response là object (có thể chứa data), cố gắng lấy mảng tin nhắn
+        const responseObj = response as Record<string, any>;
+        if (Array.isArray(responseObj.messages)) {
+          return responseObj.messages as Message[];
+        } else if (Array.isArray(responseObj.data)) {
+          return responseObj.data as Message[];
+        }
+      }
+      // Mặc định trả về mảng rỗng
+      console.error("Định dạng phản hồi không mong đợi:", response);
+      return [];
+    } catch (error) {
+      console.error("Lỗi khi gọi API lịch sử tin nhắn:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Lấy tất cả tin nhắn
    */
   async getAllMessages(): Promise<Message[]> {
