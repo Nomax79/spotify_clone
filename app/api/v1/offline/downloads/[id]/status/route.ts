@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id?.toString() || "";
+    const userId = (session.user as { id?: string }).id?.toString() || "";
     const downloadId = parseInt(params.id);
 
     if (isNaN(downloadId)) {
