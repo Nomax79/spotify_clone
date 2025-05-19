@@ -6,7 +6,6 @@ import { BaseAdminService } from "./BaseAdminService";
 export interface AdminSong {
   id: number;
   title: string;
-  artist: string;
   album?: string;
   genre?: string;
   duration?: number;
@@ -27,6 +26,11 @@ export interface AdminSong {
   updated_at?: string;
   download_url?: string;
   stream_url?: string;
+  artist: {
+    id: number;
+    name: string;
+    // Các thuộc tính khác của nghệ sĩ nếu có
+  };
 }
 
 export interface AdminSongResponse {

@@ -127,12 +127,12 @@ export function Sidebar() {
 
                         {showAdmin && (
                             <div className="space-y-1">
-                                <Link href="/admin/dashboard">
+                                <Link href="/admin">
                                     <Button
                                         variant="ghost"
                                         className={cn(
                                             "w-full justify-start text-zinc-400 hover:text-white",
-                                            pathname === "/admin/dashboard" && "text-white"
+                                            pathname === "/admin" && "text-white"
                                         )}
                                     >
                                         <LineChart className="h-5 w-5 mr-3" />

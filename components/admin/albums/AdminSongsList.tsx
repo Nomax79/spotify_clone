@@ -52,44 +52,6 @@ export default function AdminSongsList({
                 const albumSongsResponse = await albumService.getAlbumSongs(album.id)
                 setAlbumSongs(albumSongsResponse.results || [])
 
-                // Lấy danh sách tất cả bài hát (giả định có api.adminSongs.getSongs())
-                // const allSongsResponse = await api.adminSongs.getSongs()
-                // setSongs(allSongsResponse.results || [])
-
-                // Giả lập - trong thực tế, bạn cần lấy danh sách từ API
-                setSongs([
-                    {
-                        id: 1,
-                        title: "Chúng Ta Của Hiện Tại",
-                        artist: { id: 1, name: "Sơn Tùng M-TP" },
-                        album: { id: 1, title: "Chúng Ta Của Hiện Tại (Single)" },
-                        duration: 289,
-                        file_path: "https://example.com/song1.mp3",
-                        cover_image: "/placeholder.svg?height=60&width=60&text=ST",
-                        created_at: new Date().toISOString(),
-                    },
-                    {
-                        id: 2,
-                        title: "Có Chắc Yêu Là Đây",
-                        artist: { id: 1, name: "Sơn Tùng M-TP" },
-                        album: { id: 2, title: "Có Chắc Yêu Là Đây (Single)" },
-                        duration: 218,
-                        file_path: "https://example.com/song2.mp3",
-                        cover_image: "/placeholder.svg?height=60&width=60&text=ST",
-                        created_at: new Date().toISOString(),
-                    },
-                    {
-                        id: 3,
-                        title: "Chạy Ngay Đi",
-                        artist: { id: 1, name: "Sơn Tùng M-TP" },
-                        album: { id: 3, title: "Chạy Ngay Đi (Single)" },
-                        duration: 248,
-                        file_path: "https://example.com/song3.mp3",
-                        cover_image: "/placeholder.svg?height=60&width=60&text=ST",
-                        created_at: new Date().toISOString(),
-                    },
-                ]);
-
                 // Set danh sách ID bài hát đã chọn
                 setSelectedSongs(albumSongsResponse.results.map((song: AdminSong) => song.id))
             } catch (error) {

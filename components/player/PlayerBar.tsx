@@ -397,13 +397,6 @@ export function PlayerBar() {
                             className="w-24"
                         />
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-zinc-400 hover:text-white ml-2"
-                    >
-                        <Maximize2 size={18} />
-                    </Button>
                 </div>
             </div>
 

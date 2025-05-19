@@ -609,16 +609,20 @@ export class MusicCollection extends ApiRequest {
 
   // Thêm phương thức mới theo tài liệu API
   removeFromFavorites(songId: string) {
-    return this.delete<any>(`/api/v1/music/favorites/`, {
-      song_id: songId,
-    });
+    return this.delete<any>(`/api/v1/music/favorites/?song_id=${songId}`);
   }
 
   // Thêm phương thức lấy thư viện bài hát của người dùng
   getLibrary() {
     return this.get<any>(`/api/v1/music/library/`);
   }
-
+  getPlayHistory(params: { page: number; page_size: number }) {
+      const query = new URLSearchParams({
+        page: params.page.toString(),
+        page_size: params.page_size.toString(),
+      }).toString();
+      return this.get<any>(`/api/v1/music/play-history/?${query}`);
+    }
   removeSongFromPlaylist(playlistId: string, songId: string) {
     return this.post<any>(
       `/api/v1/music/playlists/${playlistId}/remove_song/`,

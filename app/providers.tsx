@@ -1,5 +1,5 @@
 import { AuthProvider } from "@/context/auth-context"
-import { ThemeProvider } from "@/context/theme-provider"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { PlayerProvider } from "@/components/player/PlayerProvider"
 import { FavoriteProvider } from "@/context/favorite-context"

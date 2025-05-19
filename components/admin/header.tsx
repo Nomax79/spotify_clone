@@ -23,14 +23,6 @@ export default function AdminHeader() {
           </svg>
           <span className="text-lg font-bold hidden md:inline">Admin Panel</span>
         </Link>
-
-        <div className="hidden md:block relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
-          <Input
-            placeholder="Tìm kiếm..."
-            className="pl-10 bg-zinc-800 border-none h-10 text-white focus-visible:ring-0 w-64"
-          />
-        </div>
       </div>
 
       <div className="flex items-center gap-4">

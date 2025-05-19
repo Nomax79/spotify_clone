@@ -14,7 +14,7 @@ interface ShareItemProps {
 
 export const useShareItem = () => {
     const router = useRouter()
-    let chatContext;
+    let chatContext: ReturnType<typeof useChat> | undefined;
 
     try {
         chatContext = useChat()
